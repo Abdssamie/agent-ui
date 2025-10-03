@@ -13,5 +13,16 @@ export const APIRoutes = {
   TeamRun: (agentOSUrl: string, teamId: string) =>
     `${agentOSUrl}/teams/${teamId}/runs`,
   DeleteTeamSession: (agentOSUrl: string, teamId: string, sessionId: string) =>
-    `${agentOSUrl}/v1//teams/${teamId}/sessions/${sessionId}`
+    `${agentOSUrl}/v1//teams/${teamId}/sessions/${sessionId}`,
+
+  // Agno Knowledge API Routes
+  Knowledge: {
+    ListContent: (baseUrl: string) => `${baseUrl}/knowledge/content`,
+    GetContentById: (baseUrl: string, contentId: string) => `${baseUrl}/knowledge/content/${contentId}`,
+    GetContentStatus: (baseUrl: string, contentId: string) => `${baseUrl}/knowledge/content/${contentId}/status`,
+    UploadContent: (baseUrl: string) => `${baseUrl}/knowledge/content`,
+    UpdateContent: (baseUrl: string, contentId: string) => `${baseUrl}/knowledge/content/${contentId}`,
+    DeleteAllContent: (baseUrl: string) => `${baseUrl}/knowledge/content`,
+    DeleteContentById: (baseUrl: string, contentId: string) => `${baseUrl}/knowledge/content/${contentId}`
+  }
 }
