@@ -5,6 +5,7 @@ import type { ChatMessage } from '@/types/os'
 import Videos from './Multimedia/Videos'
 import Images from './Multimedia/Images'
 import Audios from './Multimedia/Audios'
+import KnowledgeReferences from './KnowledgeReferences'
 import { memo } from 'react'
 import AgentThinkingLoader from './AgentThinkingLoader'
 
@@ -39,6 +40,9 @@ const AgentMessage = ({ message }: MessageProps) => {
         {message.audio && message.audio.length > 0 && (
           <Audios audio={message.audio} />
         )}
+        {message.extra_data?.references && message.extra_data.references.length > 0 && (
+          <KnowledgeReferences references={message.extra_data.references} />
+        )}
       </div>
     )
   } else if (message.response_audio) {
@@ -56,6 +60,9 @@ const AgentMessage = ({ message }: MessageProps) => {
           </MarkdownRenderer>
           {message.response_audio.content && message.response_audio && (
             <Audios audio={[message.response_audio]} />
+          )}
+          {message.extra_data?.references && message.extra_data.references.length > 0 && (
+            <KnowledgeReferences references={message.extra_data.references} />
           )}
         </div>
       )

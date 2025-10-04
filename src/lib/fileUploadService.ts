@@ -2,6 +2,15 @@ import { uploadContentAPI } from '@/api/agnoKnowledge'
 import { FileAttachment, KnowledgeContent } from '@/types/fileHandling'
 import { UploadContentResponse } from '@/types/agnoKnowledge'
 import { toast } from 'sonner'
+import {
+  parseError,
+  showErrorNotification,
+  showSuccessNotification,
+  showInfoNotification,
+  retryOperation,
+  FileErrorType,
+  FileHandlingError
+} from './errorHandling'
 
 export interface UploadOptions {
   baseUrl?: string
@@ -27,6 +36,7 @@ export const uploadFileToKnowledge = async (
   options: UploadOptions = {}
 ): Promise<UploadResult> => {
   const { baseUrl, onProgress, onSuccess, onError, metadata = {} } = options
+  let progressInterval: NodeJS.Timeout | null = null
 
   try {
     // Notify upload start
@@ -49,7 +59,7 @@ export const uploadFileToKnowledge = async (
     }
 
     // Simulate progress during upload (since we don't have real progress from fetch)
-    const progressInterval = setInterval(() => {
+    progressInterval = setInterval(() => {
       // Simulate progress up to 90% while uploading
       const currentProgress = Math.min(90, Math.random() * 30 + 60)
       onProgress?.(currentProgress)
@@ -59,7 +69,10 @@ export const uploadFileToKnowledge = async (
     const response: UploadContentResponse = await uploadContentAPI(uploadParams, baseUrl)
 
     // Clear progress interval
-    clearInterval(progressInterval)
+    if (progressInterval) {
+      clearInterval(progressInterval)
+      progressInterval = null
+    }
 
     // Complete progress
     onProgress?.(100)
@@ -88,10 +101,21 @@ export const uploadFileToKnowledge = async (
       knowledgeContent
     }
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Failed to upload file'
+    // Parse and classify the error
+    const parsedError = parseError(error)
+    const errorMessage = parsedError.userMessage
     
-    // Notify error
+    // Clear progress interval if it exists
+    if (progressInterval) {
+      clearInterval(progressInterval)
+      progressInterval = null
+    }
+    
+    // Notify error with context
     onError?.(errorMessage)
+    
+    // Show detailed error notification
+    showErrorNotification(parsedError, `Upload failed for ${attachment.file.name}`)
 
     return {
       success: false,
@@ -139,19 +163,81 @@ export const uploadFilesToKnowledge = async (
     results.set(attachment.id, result)
   }
 
-  // Notify completion
+  // Notify completion with summary
   onComplete?.(results)
+  
+  // Show summary notification
+  const successCount = Array.from(results.values()).filter(r => r.success).length
+  const failCount = results.size - successCount
+  
+  if (successCount > 0 && failCount === 0) {
+    showSuccessNotification(
+      'All files uploaded successfully',
+      `${successCount} file${successCount > 1 ? 's' : ''} uploaded to knowledge base`
+    )
+  } else if (successCount > 0 && failCount > 0) {
+    toast.warning(
+      `Partially completed: ${successCount} succeeded, ${failCount} failed`,
+      {
+        description: 'Check individual file statuses for details',
+        duration: 6000
+      }
+    )
+  } else if (failCount > 0) {
+    showErrorNotification(
+      new Error('All file uploads failed'),
+      'Batch upload'
+    )
+  }
 
   return results
 }
 
 /**
- * Retry a failed upload
+ * Retry a failed upload with exponential backoff
  */
 export const retryUpload = async (
   attachment: FileAttachment,
-  options: UploadOptions = {}
+  options: UploadOptions = {},
+  retryOptions: {
+    maxAttempts?: number
+    showNotifications?: boolean
+  } = {}
 ): Promise<UploadResult> => {
-  toast.info(`Retrying upload for ${attachment.file.name}...`)
-  return uploadFileToKnowledge(attachment, options)
+  const { maxAttempts = 3, showNotifications = true } = retryOptions
+  
+  if (showNotifications) {
+    showInfoNotification(`Retrying upload for ${attachment.file.name}...`)
+  }
+
+  try {
+    return await retryOperation(
+      () => uploadFileToKnowledge(attachment, options),
+      {
+        maxAttempts,
+        initialDelay: 1000,
+        maxDelay: 5000,
+        onRetry: (attempt, error) => {
+          if (showNotifications) {
+            const parsedError = parseError(error)
+            showInfoNotification(
+              `Retry attempt ${attempt} of ${maxAttempts}`,
+              parsedError.retryable 
+                ? `Retrying due to: ${parsedError.userMessage}` 
+                : undefined
+            )
+          }
+        }
+      }
+    )
+  } catch (error) {
+    const parsedError = parseError(error)
+    if (showNotifications) {
+      showErrorNotification(
+        parsedError,
+        `Failed to upload ${attachment.file.name} after ${maxAttempts} attempts`
+      )
+    }
+    throw error
+  }
 }

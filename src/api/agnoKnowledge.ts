@@ -6,6 +6,7 @@ import {
     UploadContentResponse,
     AgnoErrorResponse
 } from '@/types/agnoKnowledge'
+import { FileHandlingError, FileErrorType } from '@/lib/errorHandling'
 
 // Base configuration
 const DEFAULT_RETRY_ATTEMPTS = 3
@@ -15,6 +16,54 @@ const DEFAULT_TIMEOUT = 30000
 // Rate limiting configuration
 const RATE_LIMIT_DELAY = 1000
 let lastRequestTime = 0
+
+/**
+ * Create enhanced error with user-friendly messages
+ */
+const createApiError = (response: Response, errorData?: AgnoErrorResponse): Error & { 
+    code: string
+    status: number
+    userMessage: string
+} => {
+    let errorMessage = `HTTP ${response.status}: ${response.statusText}`
+    let errorCode = 'HTTP_ERROR'
+    let userMessage = errorMessage
+
+    if (errorData) {
+        errorMessage = errorData.detail || errorMessage
+        errorCode = errorData.error_code || errorCode
+    }
+    
+    // Create user-friendly messages based on status code
+    if (response.status === 400) {
+        userMessage = errorData?.detail || 'Invalid request. Please check your input and try again.'
+    } else if (response.status === 401) {
+        userMessage = 'Authentication required. Please log in again.'
+    } else if (response.status === 403) {
+        userMessage = 'You do not have permission to perform this action.'
+    } else if (response.status === 404) {
+        userMessage = 'The requested resource was not found.'
+    } else if (response.status === 413) {
+        userMessage = 'File is too large. Please try a smaller file.'
+    } else if (response.status === 429) {
+        userMessage = 'Too many requests. Please wait a moment and try again.'
+    } else if (response.status >= 500) {
+        userMessage = 'Server error. Please try again later.'
+    } else {
+        userMessage = errorData?.detail || errorMessage
+    }
+
+    const error = new Error(errorMessage) as Error & { 
+        code: string
+        status: number
+        userMessage: string
+    }
+    error.code = errorCode
+    error.status = response.status
+    error.userMessage = userMessage
+    
+    return error
+}
 
 // Utility function to handle rate limiting
 const handleRateLimit = async (): Promise<void> => {
@@ -86,21 +135,15 @@ const makeRequest = async (
         const response = await fetch(url, requestOptions)
 
         if (!response.ok) {
-            let errorMessage = `HTTP ${response.status}: ${response.statusText}`
-            let errorCode = 'HTTP_ERROR'
+            let errorData: AgnoErrorResponse | undefined
 
             try {
-                const errorData: AgnoErrorResponse = await response.json()
-                errorMessage = errorData.detail || errorMessage
-                errorCode = errorData.error_code || errorCode
+                errorData = await response.json()
             } catch {
                 // If we can't parse the error response, use the default message
             }
 
-            const error = new Error(errorMessage) as Error & { code: string; status: number }
-            error.code = errorCode
-            error.status = response.status
-            throw error
+            throw createApiError(response, errorData)
         }
 
         return response
@@ -137,21 +180,15 @@ const makeFormDataRequest = async (
         const response = await fetch(url, requestOptions)
 
         if (!response.ok) {
-            let errorMessage = `HTTP ${response.status}: ${response.statusText}`
-            let errorCode = 'HTTP_ERROR'
+            let errorData: AgnoErrorResponse | undefined
 
             try {
-                const errorData: AgnoErrorResponse = await response.json()
-                errorMessage = errorData.detail || errorMessage
-                errorCode = errorData.error_code || errorCode
+                errorData = await response.json()
             } catch {
                 // If we can't parse the error response, use the default message
             }
 
-            const error = new Error(errorMessage) as Error & { code: string; status: number }
-            error.code = errorCode
-            error.status = response.status
-            throw error
+            throw createApiError(response, errorData)
         }
 
         return response

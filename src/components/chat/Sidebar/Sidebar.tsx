@@ -41,6 +41,28 @@ const NewChatButton = ({
   </Button>
 )
 
+const KnowledgeBaseButton = () => {
+  const [view, setView] = useQueryState('view')
+  const isKnowledgeView = view === 'knowledge'
+
+  const handleClick = () => {
+    setView(isKnowledgeView ? null : 'knowledge')
+  }
+
+  return (
+    <Button
+      onClick={handleClick}
+      className={`h-9 w-full justify-start rounded-xl text-xs font-medium uppercase ${isKnowledgeView
+        ? 'bg-primaryAccent text-primary border border-primary/15'
+        : 'bg-accent text-muted hover:bg-primaryAccent/50 hover:text-primary border border-primary/15'
+        }`}
+    >
+      <Icon type="references" size="xs" />
+      <span>Knowledge</span>
+    </Button>
+  )
+}
+
 const ModelDisplay = ({ model }: { model: string }) => (
   <div className="flex h-9 w-full items-center gap-3 rounded-xl border border-primary/15 bg-accent p-3 text-xs font-medium uppercase text-muted">
     {(() => {
@@ -170,7 +192,7 @@ const Endpoint = () => {
                   <p className="text-xs font-medium text-muted">
                     {isMounted
                       ? truncateText(selectedEndpoint, 21) ||
-                        ENDPOINT_PLACEHOLDER
+                      ENDPOINT_PLACEHOLDER
                       : 'http://localhost:7777'}
                   </p>
                   <div
@@ -261,6 +283,7 @@ const Sidebar = () => {
           disabled={messages.length === 0}
           onClick={handleNewChat}
         />
+        <KnowledgeBaseButton />
         {isMounted && (
           <>
             <Endpoint />

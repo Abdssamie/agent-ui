@@ -26,6 +26,7 @@ const ChatInput = () => {
   // File attachment state and actions
   const attachments = useStore((state) => state.attachments)
   const addAttachments = useStore((state) => state.addAttachments)
+  const clearAttachments = useStore((state) => state.clearAttachments)
   const validationConfig = useStore((state) => state.validationConfig)
   const { uploadFile } = useFileUpload()
 
@@ -50,11 +51,58 @@ const ChatInput = () => {
   const handleSubmit = async () => {
     if (!inputMessage.trim()) return
 
+    // Check if there are any failed uploads
+    const failedUploads = attachments.filter((a) => a.uploadStatus === 'error')
+    if (failedUploads.length > 0) {
+      toast.error(
+        `Cannot send message: ${failedUploads.length} file${failedUploads.length > 1 ? 's' : ''} failed to upload. Please remove or retry.`
+      )
+      return
+    }
+
+    // Check if there are any uploads still in progress
+    const uploadsInProgress = attachments.filter(
+      (a) => a.uploadStatus === 'uploading' || a.uploadStatus === 'pending'
+    )
+    if (uploadsInProgress.length > 0) {
+      toast.info('Waiting for file uploads to complete...')
+      return
+    }
+
     const currentMessage = inputMessage
+    const currentAttachments = [...attachments]
     setInputMessage('')
 
     try {
-      await handleStreamResponse(currentMessage)
+      // Create FormData to include both message and file attachment metadata
+      const formData = new FormData()
+      formData.append('message', currentMessage)
+
+      // Add knowledge IDs from successfully uploaded files
+      if (currentAttachments.length > 0) {
+        const knowledgeIds = currentAttachments
+          .filter((a) => a.knowledgeId)
+          .map((a) => a.knowledgeId!)
+
+        if (knowledgeIds.length > 0) {
+          formData.append('knowledge_ids', JSON.stringify(knowledgeIds))
+        }
+
+        // Add attachment metadata for reference
+        const attachmentMetadata = currentAttachments.map((a) => ({
+          id: a.id,
+          filename: a.file.name,
+          size: a.file.size,
+          type: a.file.type,
+          knowledgeId: a.knowledgeId
+        }))
+        formData.append('attachment_metadata', JSON.stringify(attachmentMetadata))
+      }
+
+      await handleStreamResponse(formData)
+
+      // Clear attachments after successful send
+      clearAttachments()
     } catch (error) {
       toast.error(
         `Error in handleSubmit: ${error instanceof Error ? error.message : String(error)
@@ -171,10 +219,18 @@ const ChatInput = () => {
         <Button
           onClick={handleSubmit}
           disabled={
-            !(selectedAgent || teamId) || !inputMessage.trim() || isStreaming
+            !(selectedAgent || teamId) || 
+            !inputMessage.trim() || 
+            isStreaming ||
+            attachments.some((a) => a.uploadStatus === 'uploading' || a.uploadStatus === 'pending')
           }
           size="icon"
           className="rounded-xl bg-primary p-5 text-primaryAccent"
+          title={
+            attachments.some((a) => a.uploadStatus === 'uploading' || a.uploadStatus === 'pending')
+              ? 'Waiting for uploads to complete...'
+              : 'Send message'
+          }
         >
           <Icon type="send" color="primaryAccent" />
         </Button>
