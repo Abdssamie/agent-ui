@@ -1,3 +1,5 @@
+import { ImageAttachment } from '@/types/fileHandling'
+
 export interface ToolCall {
   role: 'user' | 'tool' | 'system' | 'assistant'
   content: string | null
@@ -55,6 +57,20 @@ interface ModelMessage {
   }> | null
 }
 
+export interface UserMessage {
+  content: string | null
+  context?: MessageContext[]
+  created_at: number
+  role: 'user'
+  from_history: boolean
+  stop_tool_after_call: boolean
+  images?: ImageData[]
+  videos?: VideoData[]
+  audio?: AudioData[]
+  files?: FileData[]
+  attachments?: ImageAttachment[]
+
+}
 export interface Model {
   name: string
   model: string
@@ -155,10 +171,11 @@ export interface RunResponse {
   context?: MessageContext[]
   event: RunEvent
   event_data?: object
-  messages?: ModelMessage[]
+  messages?: ModelMessage[] | UserMessage[]
   metrics?: object
   model?: string
   run_id?: string
+  run_input?: string
   agent_id?: string
   session_id?: string
   tool?: ToolCall
@@ -208,7 +225,11 @@ export interface ChatMessage {
   images?: ImageData[]
   videos?: VideoData[]
   audio?: AudioData[]
+  files?: FileData[]
   response_audio?: ResponseAudio
+  // Ephemeral UI-only field - not persisted to database
+  // Only used to show preview in sent message, cleared on page refresh
+  attachments?: ImageAttachment[]
 }
 
 export interface AgentDetails {
@@ -229,8 +250,21 @@ export interface TeamDetails {
 }
 
 export interface ImageData {
-  revised_prompt: string
-  url: string
+  revised_prompt?: string
+  url?: string
+  // For uploaded images
+  content?: string  // base64 encoded image
+  format?: string   // e.g., "jpeg", "png"
+  id?: string
+  mime_type?: string  // e.g., "image/jpeg"
+}
+
+export interface FileData {
+  content?: string
+  format?: string
+  id?: string
+  mime_type?: string
+  filename?: string
 }
 
 export interface VideoData {

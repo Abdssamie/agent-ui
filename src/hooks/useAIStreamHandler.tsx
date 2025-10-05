@@ -10,6 +10,28 @@ import useAIResponseStream from './useAIResponseStream'
 import { ToolCall } from '@/types/os'
 import { useQueryState } from 'nuqs'
 import { getJsonMarkdown } from '@/lib/utils'
+import { Content } from 'next/font/google'
+
+/**
+ * Converts a File to base64 string (without data URL prefix)
+ */
+const fileToBase64 = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      const result = reader.result as string
+      // Remove the data URL prefix (e.g., "data:image/jpeg;base64,")
+      const base64 = result.split(',')[1]
+      if (base64) {
+        resolve(base64)
+      } else {
+        reject(new Error('Failed to extract base64 content'))
+      }
+    }
+    reader.onerror = () => reject(reader.error)
+    reader.readAsDataURL(file)
+  })
+}
 
 const useAIChatStreamHandler = () => {
   const setMessages = useStore((state) => state.setMessages)
@@ -99,7 +121,8 @@ const useAIChatStreamHandler = () => {
   )
 
   const handleStreamResponse = useCallback(
-    async (input: string | FormData) => {
+    async (input: string | FormData, attachments?: Array<{ id: string; preview: string; file: File }>) => {
+      console.log('[Stream] Starting - setIsStreaming(true)')
       setIsStreaming(true)
 
       const formData = input instanceof FormData ? input : new FormData()
@@ -122,11 +145,42 @@ const useAIChatStreamHandler = () => {
         return prevMessages
       })
 
+      // Convert attachments to ImageData format for immediate display
+      // Images: convert to base64 for preview
+      // Documents: just store metadata (no base64 needed)
+      const imageData = await Promise.all(
+        attachments
+          ?.filter(att => att && att.file)
+          .map(async (att) => {
+            try {
+              const mimeType = att.file.type || 'application/octet-stream'
+              const format = mimeType.split('/')[1] || 'file'
+              const isImage = mimeType.startsWith('image/')
+              
+              // Only convert images to base64
+              const base64Content = isImage ? await fileToBase64(att.file) : ''
+              
+              return {
+                content: base64Content,
+                format: format,
+                mime_type: mimeType,
+                id: att.id || Math.random().toString(36).substring(7)
+              }
+            } catch (error) {
+              console.error('Error processing attachment:', error)
+              return null
+            }
+          }) || []
+      ).then(results => results.filter((img): img is {content: string, format: string, mime_type: string, id: string} => img !== null))
+
       addMessage({
         role: 'user',
         content: formData.get('message') as string,
-        created_at: Math.floor(Date.now() / 1000)
+        created_at: Math.floor(Date.now() / 1000),
+        images: imageData && imageData.length > 0 ? imageData : undefined
       })
+
+      setIsStreaming(true)
 
       addMessage({
         role: 'agent',
@@ -162,10 +216,22 @@ const useAIChatStreamHandler = () => {
         formData.append('stream', 'true')
         formData.append('session_id', sessionId ?? '')
 
+        console.log('[Stream] Calling streamResponse...')
         await streamResponse({
           apiUrl: RunUrl,
           requestBody: formData,
           onChunk: (chunk: RunResponse) => {
+            // Log every chunk for debugging
+            console.log('[Stream Chunk]', {
+              event: chunk.event,
+              hasContent: !!chunk.content,
+              contentLength: typeof chunk.content === 'string' ? chunk.content.length : 'N/A',
+              hasTool: !!chunk.tool,
+              hasTools: !!chunk.tools,
+              timestamp: new Date().toISOString(),
+              content: chunk.content
+            })
+            
             if (
               chunk.event === RunEvent.RunStarted ||
               chunk.event === RunEvent.TeamRunStarted ||
@@ -339,37 +405,37 @@ const useAIChatStreamHandler = () => {
               chunk.event === RunEvent.TeamMemoryUpdateStarted ||
               chunk.event === RunEvent.TeamMemoryUpdateCompleted
             ) {
+              console.log('[Stream] Memory update event:', chunk.event)
               // No-op for now; could surface a lightweight UI indicator in the future
             } else if (
               chunk.event === RunEvent.RunCompleted ||
               chunk.event === RunEvent.TeamRunCompleted
             ) {
+              console.log('[Stream] RunCompleted - updating metadata and re-enabling UI')
+              
+              // Re-enable UI immediately - content streaming is done
+              // User can start typing/attaching while we process final metadata
+              setIsStreaming(false)
+              queueMicrotask(() => focusChatInput())
+              
               setMessages((prevMessages) => {
                 const newMessages = prevMessages.map((message, index) => {
                   if (
                     index === prevMessages.length - 1 &&
                     message.role === 'agent'
                   ) {
-                    let updatedContent: string
-                    if (typeof chunk.content === 'string') {
-                      updatedContent = chunk.content
-                    } else {
-                      try {
-                        updatedContent = JSON.stringify(chunk.content)
-                      } catch {
-                        updatedContent = 'Error parsing response'
-                      }
-                    }
+                    // DON'T replace content - it was already streamed!
+                    // Only update metadata like tool_calls, images, timestamps, etc.
                     return {
                       ...message,
-                      content: updatedContent,
+                      // Keep existing content that was streamed
                       tool_calls: processChunkToolCalls(
                         chunk,
                         message.tool_calls
                       ),
                       images: chunk.images ?? message.images,
                       videos: chunk.videos ?? message.videos,
-                      response_audio: chunk.response_audio,
+                      response_audio: chunk.response_audio ?? message.response_audio,
                       created_at: chunk.created_at ?? message.created_at,
                       extra_data: {
                         reasoning_steps:
@@ -388,8 +454,9 @@ const useAIChatStreamHandler = () => {
             }
           },
           onError: (error) => {
-            updateMessagesWithErrorState()
-            setStreamingErrorMessage(error.message)
+            console.log('[Stream] onError called:', error.message)
+            updateMessagesWithErrorState();
+            setStreamingErrorMessage(error.message);
             if (newSessionId) {
               setSessionsData(
                 (prevSessionsData) =>
@@ -399,9 +466,14 @@ const useAIChatStreamHandler = () => {
               )
             }
           },
-          onComplete: () => {}
+          onComplete: () => {
+            console.log('[Stream] onComplete called')
+            // Streaming state is handled in finally block
+          }
         })
+        console.log('[Stream] streamResponse promise resolved')
       } catch (error) {
+        console.log('[Stream] Catch block - error:', error)
         updateMessagesWithErrorState()
         setStreamingErrorMessage(
           error instanceof Error ? error.message : String(error)
@@ -415,8 +487,14 @@ const useAIChatStreamHandler = () => {
           )
         }
       } finally {
-        focusChatInput()
+        console.log('[Stream] Finally block')
+        // Set streaming to false in case RunCompleted wasn't received (error cases)
         setIsStreaming(false)
+        // Focus input in next tick to avoid blocking state update
+        queueMicrotask(() => {
+          console.log('[Stream] Focusing chat input')
+          focusChatInput()
+        })
       }
     },
     [

@@ -1,5 +1,5 @@
 'use client'
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef } from 'react'
 import { toast } from 'sonner'
 import { TextArea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
@@ -7,111 +7,67 @@ import { useStore } from '@/store'
 import useAIChatStreamHandler from '@/hooks/useAIStreamHandler'
 import { useQueryState } from 'nuqs'
 import Icon from '@/components/ui/icon'
-import FileDropZone from './FileDropZone'
-import FilePreviewList from './FilePreviewList'
-import { validateFiles, processFiles } from '@/lib/fileValidation'
-import { useFileUpload } from '@/hooks/useFileUpload'
+import ImageAttachmentPreview from './ImageAttachmentPreview'
+import { useImageAttachment } from '@/hooks/useImageAttachment'
+import { FILE_VALIDATION } from '@/lib/fileValidation'
 
 const ChatInput = () => {
   const { chatInputRef } = useStore()
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const [previousAttachmentCount, setPreviousAttachmentCount] = useState(0)
+  const imageInputRef = useRef<HTMLInputElement>(null)
 
   const { handleStreamResponse } = useAIChatStreamHandler()
   const [selectedAgent] = useQueryState('agent')
   const [teamId] = useQueryState('team')
+  const [view, setView] = useQueryState('view')
   const [inputMessage, setInputMessage] = useState('')
   const isStreaming = useStore((state) => state.isStreaming)
-  
-  // File attachment state and actions
-  const attachments = useStore((state) => state.attachments)
-  const addAttachments = useStore((state) => state.addAttachments)
-  const clearAttachments = useStore((state) => state.clearAttachments)
-  const validationConfig = useStore((state) => state.validationConfig)
-  const { uploadFile } = useFileUpload()
 
-  // Auto-upload files when new attachments are added
-  useEffect(() => {
-    const newAttachments = attachments.filter(
-      (attachment) => attachment.uploadStatus === 'pending'
-    )
-
-    // Only upload if we have new attachments (count increased)
-    if (newAttachments.length > 0 && attachments.length > previousAttachmentCount) {
-      // Upload each new attachment
-      newAttachments.forEach((attachment) => {
-        uploadFile(attachment, {
-          session_id: selectedAgent || teamId || undefined
-        })
-      })
-    }
-
-    setPreviousAttachmentCount(attachments.length)
-  }, [attachments, previousAttachmentCount, uploadFile, selectedAgent, teamId])
+  // Image attachment state and actions
+  const { imageAttachments, addImage, removeImage, clearImages, isProcessing } = useImageAttachment()
   const handleSubmit = async () => {
     if (!inputMessage.trim()) return
 
-    // Check if there are any failed uploads
-    const failedUploads = attachments.filter((a) => a.uploadStatus === 'error')
-    if (failedUploads.length > 0) {
-      toast.error(
-        `Cannot send message: ${failedUploads.length} file${failedUploads.length > 1 ? 's' : ''} failed to upload. Please remove or retry.`
-      )
-      return
-    }
-
-    // Check if there are any uploads still in progress
-    const uploadsInProgress = attachments.filter(
-      (a) => a.uploadStatus === 'uploading' || a.uploadStatus === 'pending'
-    )
-    if (uploadsInProgress.length > 0) {
-      toast.info('Waiting for file uploads to complete...')
-      return
-    }
-
     const currentMessage = inputMessage
-    const currentAttachments = [...attachments]
+    const currentImageAttachments = [...imageAttachments]
+
+    // Clear UI immediately for better UX
     setInputMessage('')
+    clearImages()
 
     try {
-      // Create FormData to include both message and file attachment metadata
+      // Create FormData to include message and image attachments
       const formData = new FormData()
       formData.append('message', currentMessage)
 
-      // Add knowledge IDs from successfully uploaded files
-      if (currentAttachments.length > 0) {
-        const knowledgeIds = currentAttachments
-          .filter((a) => a.knowledgeId)
-          .map((a) => a.knowledgeId!)
-
-        if (knowledgeIds.length > 0) {
-          formData.append('knowledge_ids', JSON.stringify(knowledgeIds))
-        }
-
-        // Add attachment metadata for reference
-        const attachmentMetadata = currentAttachments.map((a) => ({
-          id: a.id,
-          filename: a.file.name,
-          size: a.file.size,
-          type: a.file.type,
-          knowledgeId: a.knowledgeId
-        }))
-        formData.append('attachment_metadata', JSON.stringify(attachmentMetadata))
+      // Add image attachments using the 'files' parameter (matches API spec)
+      if (currentImageAttachments.length > 0) {
+        currentImageAttachments.forEach((img) => {
+          formData.append('files', img.file)
+        })
       }
 
-      await handleStreamResponse(formData)
-
-      // Clear attachments after successful send
-      clearAttachments()
+      // Pass attachments for preview in user message
+      // Documents don't have preview (empty string), but we still need to pass them for display
+      const validAttachments = currentImageAttachments.filter(img => img && img.file)
+      await handleStreamResponse(formData, validAttachments.length > 0 ? validAttachments : undefined)
     } catch (error) {
-      toast.error(
-        `Error in handleSubmit: ${error instanceof Error ? error.message : String(error)
-        }`
-      )
+      // Restore message and images on error
+      setInputMessage(currentMessage)
+      currentImageAttachments.forEach((img) => {
+        addImage(img.file).catch(console.error)
+      })
+      
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      toast.error(`Failed to send message: ${errorMessage}`)
+      console.error('Error in handleSubmit:', error)
     }
   }
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleKnowledgeBaseClick = () => {
+    setView('knowledge')
+  }
+
+  const handleImageSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files
     if (!files || files.length === 0) {
       // User cancelled file selection
@@ -119,80 +75,76 @@ const ChatInput = () => {
     }
 
     const fileArray = Array.from(files)
-    const existingFiles = attachments.map((attachment) => attachment.file)
 
-    // Validate files before adding
-    const validation = validateFiles(fileArray, existingFiles, validationConfig)
-
-    if (!validation.isValid) {
-      // Show all validation errors
-      validation.errors.forEach((error) => {
-        toast.error(error)
-      })
-      
-      // Reset file input
-      if (fileInputRef.current) {
-        fileInputRef.current.value = ''
-      }
-      return
+    // Add each image using the hook
+    for (const file of fileArray) {
+      await addImage(file)
     }
-
-    // Show warnings if any
-    validation.warnings.forEach((warning) => {
-      toast.warning(warning)
-    })
-
-    // Process files and add successful ones
-    const result = processFiles(fileArray, existingFiles, validationConfig)
-
-    if (result.successful.length > 0) {
-      addAttachments(result.successful)
-      toast.success(
-        `Added ${result.successful.length} file${result.successful.length > 1 ? 's' : ''}`
-      )
-    }
-
-    // Show errors for failed files
-    result.failed.forEach(({ file, error }) => {
-      toast.error(`Failed to add ${file.name}: ${error}`)
-    })
 
     // Reset file input to allow selecting the same file again
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ''
+    if (imageInputRef.current) {
+      imageInputRef.current.value = ''
     }
   }
 
-  const handleAttachmentClick = () => {
-    fileInputRef.current?.click()
+  const handleImageAttachmentClick = () => {
+    imageInputRef.current?.click()
   }
 
   return (
-    <FileDropZone disabled={!(selectedAgent || teamId)}>
-      {/* File Preview List */}
-      <FilePreviewList />
-      
+    <>
+      {/* Processing indicator */}
+      {isProcessing && (
+        <div className="mx-auto mb-2 flex w-full max-w-2xl items-center gap-2 text-xs text-muted-foreground px-2">
+          <Icon type="loader" className="h-3 w-3 animate-spin" />
+          <span>Processing files...</span>
+        </div>
+      )}
+
+      {/* File Attachment Preview - for images and documents that will be sent with message */}
+      <ImageAttachmentPreview
+        attachments={imageAttachments}
+        onRemove={removeImage}
+        isProcessing={isProcessing}
+      />
+
       <div className="relative mx-auto mb-1 flex w-full max-w-2xl items-end justify-center gap-x-2 font-geist">
-        {/* Hidden file input */}
+        {/* Hidden file input for image attachments */}
         <input
-          ref={fileInputRef}
+          ref={imageInputRef}
           type="file"
           multiple
-          accept={validationConfig.allowedExtensions.join(',')}
-          onChange={handleFileSelect}
+          accept={[
+            ...FILE_VALIDATION.images.allowedExtensions,
+            ...FILE_VALIDATION.documents.allowedExtensions
+          ].join(',')}
+          onChange={handleImageSelect}
           className="hidden"
-          aria-label="Select files to attach"
+          aria-label="Select files to attach (images or documents)"
         />
-        
-        {/* Attachment button */}
+
+        {/* Knowledge Base Navigation button */}
         <Button
-          onClick={handleAttachmentClick}
+          onClick={handleKnowledgeBaseClick}
           disabled={!(selectedAgent || teamId) || isStreaming}
           size="icon"
           variant="ghost"
           className="rounded-xl p-2 text-primary hover:bg-accent"
-          aria-label="Attach files"
-          title="Attach files"
+          aria-label="Go to Knowledge Base"
+          title="Go to Knowledge Base"
+        >
+          <Icon type="database" color="primary" />
+        </Button>
+
+        {/* File Attachment button */}
+        <Button
+          onClick={handleImageAttachmentClick}
+          disabled={!(selectedAgent || teamId) || isStreaming || isProcessing}
+          size="icon"
+          variant="ghost"
+          className="rounded-xl p-2 text-primary hover:bg-accent"
+          aria-label="Attach File"
+          title="Attach File (Images or PDFs)"
         >
           <Icon type="paperclip" color="primary" />
         </Button>
@@ -219,23 +171,23 @@ const ChatInput = () => {
         <Button
           onClick={handleSubmit}
           disabled={
-            !(selectedAgent || teamId) || 
-            !inputMessage.trim() || 
+            !(selectedAgent || teamId) ||
+            !inputMessage.trim() ||
             isStreaming ||
-            attachments.some((a) => a.uploadStatus === 'uploading' || a.uploadStatus === 'pending')
+            isProcessing
           }
           size="icon"
           className="rounded-xl bg-primary p-5 text-primaryAccent"
           title={
-            attachments.some((a) => a.uploadStatus === 'uploading' || a.uploadStatus === 'pending')
-              ? 'Waiting for uploads to complete...'
+            isProcessing
+              ? 'Processing images...'
               : 'Send message'
           }
         >
           <Icon type="send" color="primaryAccent" />
         </Button>
       </div>
-    </FileDropZone>
+    </>
   )
 }
 

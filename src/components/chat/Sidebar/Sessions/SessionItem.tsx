@@ -27,6 +27,7 @@ const SessionItem = ({
   const [teamId] = useQueryState('team')
   const [dbId] = useQueryState('db_id')
   const [, setSessionId] = useQueryState('session')
+  const [, setView] = useQueryState('view')
   const { getSession } = useSessionLoader()
   const { selectedEndpoint, sessionsData, setSessionsData, mode } = useStore()
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
@@ -37,6 +38,8 @@ const SessionItem = ({
     if (!(agentId || teamId || dbId)) return
 
     onSessionClick()
+    // Clear the view to show chat instead of knowledge base
+    setView(null)
     await getSession(
       {
         entityType: mode,

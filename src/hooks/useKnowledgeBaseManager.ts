@@ -1,7 +1,7 @@
 // Custom hook for knowledge base content management
 // Provides comprehensive operations for persistent knowledge base
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { useStore } from '@/store'
 import {
   knowledgeBaseService,
@@ -14,6 +14,7 @@ import { toast } from 'sonner'
 export interface UseKnowledgeBaseManagerOptions {
   autoLoad?: boolean
   baseUrl?: string
+  dbId?: string
 }
 
 export interface UseKnowledgeBaseManagerReturn {
@@ -46,7 +47,7 @@ export interface UseKnowledgeBaseManagerReturn {
 export const useKnowledgeBaseManager = (
   options: UseKnowledgeBaseManagerOptions = {}
 ): UseKnowledgeBaseManagerReturn => {
-  const { autoLoad = false, baseUrl } = options
+  const { autoLoad = false, baseUrl, dbId } = options
 
   const [contents, setContents] = useState<KnowledgeBaseContent[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -60,6 +61,9 @@ export const useKnowledgeBaseManager = (
 
   const store = useStore()
 
+  // Track polling interval
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null)
+
   /**
    * Load contents from knowledge base
    */
@@ -71,6 +75,7 @@ export const useKnowledgeBaseManager = (
       try {
         const result = await knowledgeBaseService.listContent({
           ...loadOptions,
+          db_id: loadOptions.db_id || dbId,
           baseUrl: loadOptions.baseUrl || baseUrl
         })
 
@@ -84,7 +89,7 @@ export const useKnowledgeBaseManager = (
         setIsLoading(false)
       }
     },
-    [baseUrl]
+    [baseUrl, dbId]
   )
 
   /**
@@ -309,12 +314,79 @@ export const useKnowledgeBaseManager = (
     }
   }, [baseUrl])
 
+  /**
+   * Poll status for processing documents
+   */
+  const pollProcessingDocuments = useCallback(async () => {
+    const processingDocs = contents.filter(c => c.status === 'processing')
+    
+    if (processingDocs.length === 0) {
+      // No processing documents, stop polling
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current)
+        pollingIntervalRef.current = null
+      }
+      return
+    }
+
+    // Check status for each processing document
+    for (const doc of processingDocs) {
+      try {
+        const status = await knowledgeBaseService.getContentStatus(doc.id, dbId, baseUrl)
+        
+        // Update if status changed
+        if (status.status !== doc.status) {
+          setContents(prev => 
+            prev.map(content => 
+              content.id === doc.id 
+                ? { ...content, status: status.status, statusMessage: status.status_message }
+                : content
+            )
+          )
+
+          // Show notification when processing completes
+          if (status.status === 'completed') {
+            toast.success(`"${doc.name}" processing completed`)
+          } else if (status.status === 'failed') {
+            toast.error(`"${doc.name}" processing failed: ${status.status_message || 'Unknown error'}`)
+          }
+        }
+      } catch (err) {
+        console.error(`Failed to poll status for ${doc.id}:`, err)
+      }
+    }
+  }, [contents, dbId, baseUrl])
+
   // Auto-load on mount if enabled
   useEffect(() => {
     if (autoLoad) {
       loadContents()
     }
   }, [autoLoad, loadContents])
+
+  // Set up polling for processing documents
+  useEffect(() => {
+    const hasProcessingDocs = contents.some(c => c.status === 'processing')
+    
+    if (hasProcessingDocs && !pollingIntervalRef.current) {
+      // Start polling every 3 seconds
+      pollingIntervalRef.current = setInterval(() => {
+        pollProcessingDocuments()
+      }, 3000)
+    } else if (!hasProcessingDocs && pollingIntervalRef.current) {
+      // Stop polling when no processing documents
+      clearInterval(pollingIntervalRef.current)
+      pollingIntervalRef.current = null
+    }
+
+    // Cleanup on unmount
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current)
+        pollingIntervalRef.current = null
+      }
+    }
+  }, [contents, pollProcessingDocuments])
 
   return {
     contents,

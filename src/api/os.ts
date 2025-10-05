@@ -68,13 +68,17 @@ export const getSessionAPI = async (
   if (dbId) queryParams.append('db_id', dbId)
 
   const response = await fetch(
-    `${APIRoutes.GetSession(base, sessionId)}?${queryParams.toString()}`,
+    `${APIRoutes.GetSessionRuns(base, sessionId)}?${queryParams.toString()}`,
     {
       method: 'GET'
     }
   )
 
   if (!response.ok) {
+    // 404 is expected for new sessions that don't exist yet
+    if (response.status === 404) {
+      return null
+    }
     throw new Error(`Failed to fetch session: ${response.statusText}`)
   }
 

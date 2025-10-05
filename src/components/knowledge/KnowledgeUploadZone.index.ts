@@ -1,0 +1,1 @@
+export { KnowledgeUploadZone } from './KnowledgeUploadZone'

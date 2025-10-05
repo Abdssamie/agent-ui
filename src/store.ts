@@ -58,14 +58,14 @@ interface Store {
   ) => void
   isSessionsLoading: boolean
   setIsSessionsLoading: (isSessionsLoading: boolean) => void
-  
+
   // File attachment state management
   attachments: FileAttachment[]
   isUploading: boolean
   uploadProgress: Record<string, number>
   knowledgeContents: KnowledgeContent[]
   validationConfig: FileValidationConfig
-  
+
   // File attachment actions
   addAttachment: (attachment: FileAttachment) => void
   addAttachments: (attachments: FileAttachment[]) => void

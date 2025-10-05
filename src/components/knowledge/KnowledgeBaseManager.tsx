@@ -4,6 +4,7 @@
 import React, { useState } from 'react'
 import { useKnowledgeBaseManager } from '@/hooks/useKnowledgeBaseManager'
 import { KnowledgeBaseContent } from '@/lib/knowledgeBaseService'
+import { uploadFileToKnowledge } from '@/lib/fileUploadService'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useQueryState } from 'nuqs'
@@ -34,14 +35,21 @@ import {
   DialogTitle
 } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
+import { KnowledgeUploadZone } from './KnowledgeUploadZone'
+import { UploadProgressList } from './UploadProgressList'
+import { validateFiles, generateFileId } from '@/lib/fileValidation'
+import { FileAttachment } from '@/types/fileHandling'
+import { toast } from 'sonner'
 
 interface KnowledgeBaseManagerProps {
   baseUrl?: string
+  dbId?: string | null
   onContentSelect?: (content: KnowledgeBaseContent) => void
 }
 
 export const KnowledgeBaseManager = ({
   baseUrl,
+  dbId,
   onContentSelect
 }: KnowledgeBaseManagerProps) => {
   const {
@@ -54,7 +62,7 @@ export const KnowledgeBaseManager = ({
     deleteAllContents,
     batchDelete,
     refreshContent
-  } = useKnowledgeBaseManager({ autoLoad: true, baseUrl })
+  } = useKnowledgeBaseManager({ autoLoad: true, baseUrl, dbId: dbId || undefined })
 
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -63,6 +71,7 @@ export const KnowledgeBaseManager = ({
   const [contentToDelete, setContentToDelete] = useState<string | null>(null)
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false)
   const [selectedContent, setSelectedContent] = useState<KnowledgeBaseContent | null>(null)
+  const [uploadingFiles, setUploadingFiles] = useState<Map<string, { name: string; progress: number; status: 'uploading' | 'success' | 'error'; error?: string }>>(new Map())
 
   // Filter contents based on search query
   const filteredContents = contents.filter((content) =>
@@ -122,6 +131,114 @@ export const KnowledgeBaseManager = ({
     setDetailsDialogOpen(true)
   }
 
+  const handleFilesSelected = async (files: File[]) => {
+    // Validate files
+    const validation = validateFiles(files)
+    
+    if (!validation.isValid) {
+      validation.errors.forEach(error => toast.error(error))
+      return
+    }
+
+    if (validation.warnings.length > 0) {
+      validation.warnings.forEach(warning => toast.warning(warning))
+    }
+
+    // Process each file
+    for (const file of files) {
+      const attachmentId = generateFileId(file)
+      const attachment: FileAttachment = {
+        id: attachmentId,
+        file,
+        uploadStatus: 'pending',
+        progress: 0
+      }
+
+      // Add to uploading files map
+      setUploadingFiles(prev => new Map(prev).set(attachmentId, {
+        name: file.name,
+        progress: 0,
+        status: 'uploading'
+      }))
+
+      // Upload file with progress tracking
+      try {
+        const result = await uploadFileToKnowledge(attachment, {
+          baseUrl,
+          onProgress: (progress) => {
+            setUploadingFiles(prev => {
+              const updated = new Map(prev)
+              const current = updated.get(attachmentId)
+              if (current) {
+                updated.set(attachmentId, {
+                  ...current,
+                  progress: Math.round(progress)
+                })
+              }
+              return updated
+            })
+          },
+          onSuccess: (knowledgeId) => {
+            // Success notification is handled by the service
+          },
+          onError: (error) => {
+            // Error notification is handled by the service
+          }
+        })
+        
+        if (result.success) {
+          // Update status to success
+          setUploadingFiles(prev => {
+            const updated = new Map(prev)
+            updated.set(attachmentId, {
+              name: file.name,
+              progress: 100,
+              status: 'success'
+            })
+            return updated
+          })
+
+          // Remove from uploading files after a delay
+          setTimeout(() => {
+            setUploadingFiles(prev => {
+              const updated = new Map(prev)
+              updated.delete(attachmentId)
+              return updated
+            })
+          }, 2000)
+
+          // Refresh content list
+          await loadContents()
+        } else {
+          throw new Error(result.error || 'Upload failed')
+        }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Upload failed'
+        
+        // Update status to error
+        setUploadingFiles(prev => {
+          const updated = new Map(prev)
+          updated.set(attachmentId, {
+            name: file.name,
+            progress: 0,
+            status: 'error',
+            error: errorMessage
+          })
+          return updated
+        })
+
+        // Remove from uploading files after a delay
+        setTimeout(() => {
+          setUploadingFiles(prev => {
+            const updated = new Map(prev)
+            updated.delete(attachmentId)
+            return updated
+          })
+        }, 5000)
+      }
+    }
+  }
+
   const getStatusBadge = (status: 'processing' | 'completed' | 'failed') => {
     const variants = {
       processing: 'default',
@@ -156,26 +273,34 @@ export const KnowledgeBaseManager = ({
   }
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between p-4 border-b">
+    <div className="flex flex-col h-full bg-background">
+      {/* Header */}
+      <div className="flex items-center justify-between px-6 py-4 border-b bg-card/50">
         <div className="flex items-center gap-3">
           <Button
             variant="ghost"
             size="sm"
             onClick={handleBackToChat}
-            className="h-8 w-8 p-0"
+            className="h-9 w-9 p-0 hover:bg-accent"
           >
             <Icon type="arrow-down" size="xs" className="rotate-90" />
           </Button>
-          <h2 className="text-xl font-semibold">Knowledge Base</h2>
+          <div>
+            <h2 className="text-lg font-semibold">Knowledge Base</h2>
+            <p className="text-xs text-muted-foreground">
+              {pagination.totalCount} {pagination.totalCount === 1 ? 'item' : 'items'}
+            </p>
+          </div>
         </div>
         <div className="flex gap-2">
           <Button
-            variant="outline"
+            variant="ghost"
             size="sm"
             onClick={() => loadContents()}
             disabled={isLoading}
+            className="gap-2"
           >
+            <Icon type="refresh" size="xs" />
             Refresh
           </Button>
           {selectedIds.size > 0 && (
@@ -185,120 +310,154 @@ export const KnowledgeBaseManager = ({
               onClick={handleBatchDelete}
               disabled={isLoading}
             >
-              Delete Selected ({selectedIds.size})
+              Delete {selectedIds.size}
             </Button>
           )}
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={() => setDeleteAllDialogOpen(true)}
-            disabled={isLoading || contents.length === 0}
-          >
-            Delete All
-          </Button>
+          {contents.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setDeleteAllDialogOpen(true)}
+              disabled={isLoading}
+              className="text-destructive hover:text-destructive"
+            >
+              Clear All
+            </Button>
+          )}
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto p-4 space-y-4">
+      <div className="flex-1 overflow-auto">
+        <div className="max-w-6xl mx-auto p-6 space-y-6">
+          {/* Compact Upload Zone */}
+          <div className="bg-card rounded-lg border p-4">
+            <KnowledgeUploadZone
+              onFilesSelected={handleFilesSelected}
+              disabled={isLoading}
+            />
+          </div>
 
-      {error && (
-        <div className="bg-destructive/10 text-destructive p-3 rounded-md">
-          {error}
-        </div>
-      )}
+          {/* Upload Progress */}
+          {uploadingFiles.size > 0 && (
+            <div className="bg-card rounded-lg border p-4">
+              <UploadProgressList uploads={uploadingFiles} />
+            </div>
+          )}
 
-      <div className="flex items-center gap-2">
-        <Input
-          placeholder="Search content..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="max-w-sm"
-        />
-      </div>
+          {error && (
+            <div className="bg-destructive/10 text-destructive px-4 py-3 rounded-lg border border-destructive/20">
+              {error}
+            </div>
+          )}
 
-      {isLoading && contents.length === 0 ? (
-        <div className="flex items-center justify-center py-8">
-          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
-        </div>
-      ) : filteredContents.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-          <p>No content found</p>
-        </div>
-      ) : (
-        <>
-          <div className="border rounded-md">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-12">
-                    <input
-                      type="checkbox"
-                      checked={selectedIds.size === filteredContents.length}
-                      onChange={handleSelectAll}
-                      className="cursor-pointer"
-                    />
-                  </TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Size</TableHead>
-                  <TableHead>Upload Status</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredContents.map((content) => (
-                  <TableRow
-                    key={content.id}
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => handleViewDetails(content)}
-                  >
-                    <TableCell onClick={(e: React.MouseEvent) => e.stopPropagation()}>
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.has(content.id)}
-                        onChange={() => handleSelectOne(content.id)}
-                        className="cursor-pointer"
-                      />
-                    </TableCell>
-                    <TableCell className="font-medium">{content.name}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {content.type || 'Unknown'}
-                    </TableCell>
-                    <TableCell className="text-sm">
-                      {formatSize(content.size)}
-                    </TableCell>
-                    <TableCell>{getStatusBadge(content.status)}</TableCell>
-                    <TableCell className="text-sm">
-                      {formatDate(content.createdAt)}
-                    </TableCell>
-                    <TableCell className="text-right" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDeleteClick(content.id)}
-                        disabled={isLoading}
-                        title="Delete"
+          {/* Search Bar */}
+          <div className="flex items-center gap-3">
+            <div className="relative flex-1 max-w-md">
+              <Icon type="search" size="xs" className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Search by name..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+          </div>
+
+          {/* Content List */}
+          {isLoading && contents.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16">
+              <div className="animate-spin h-10 w-10 border-4 border-primary border-t-transparent rounded-full" />
+              <p className="text-sm text-muted-foreground mt-4">Loading knowledge base...</p>
+            </div>
+          ) : filteredContents.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center mb-4">
+                <Icon type="file" size="md" className="text-muted-foreground" />
+              </div>
+              <p className="text-sm font-medium">No content found</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {searchQuery ? 'Try a different search term' : 'Upload files to get started'}
+              </p>
+            </div>
+          ) : (
+            <>
+              <div className="bg-card rounded-lg border overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="hover:bg-transparent border-b">
+                      <TableHead className="w-12">
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.size === filteredContents.length && filteredContents.length > 0}
+                          onChange={handleSelectAll}
+                          className="cursor-pointer rounded"
+                        />
+                      </TableHead>
+                      <TableHead className="font-semibold">Name</TableHead>
+                      <TableHead className="font-semibold">Type</TableHead>
+                      <TableHead className="font-semibold">Size</TableHead>
+                      <TableHead className="font-semibold">Status</TableHead>
+                      <TableHead className="font-semibold">Created</TableHead>
+                      <TableHead className="text-right font-semibold">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredContents.map((content) => (
+                      <TableRow
+                        key={content.id}
+                        className="cursor-pointer hover:bg-accent/50 transition-colors"
+                        onClick={() => handleViewDetails(content)}
                       >
-                        ✕
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                        <TableCell onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.has(content.id)}
+                            onChange={() => handleSelectOne(content.id)}
+                            className="cursor-pointer rounded"
+                          />
+                        </TableCell>
+                        <TableCell className="font-medium">{content.name}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {content.type || 'Unknown'}
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {formatSize(content.size)}
+                        </TableCell>
+                        <TableCell>{getStatusBadge(content.status)}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {formatDate(content.createdAt)}
+                        </TableCell>
+                        <TableCell className="text-right" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteClick(content.id)}
+                            disabled={isLoading}
+                            className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive"
+                            title="Delete"
+                          >
+                            <Icon type="trash" size="xs" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
 
-          <div className="flex items-center justify-between text-sm text-muted-foreground">
-            <div>
-              Showing {filteredContents.length} of {pagination.totalCount} items
-            </div>
-            <div>
-              Page {pagination.page} of {pagination.totalPages}
-            </div>
-          </div>
-        </>
-      )}
+              {pagination.totalPages > 1 && (
+                <div className="flex items-center justify-between text-sm text-muted-foreground px-2">
+                  <div>
+                    Showing {filteredContents.length} of {pagination.totalCount}
+                  </div>
+                  <div>
+                    Page {pagination.page} of {pagination.totalPages}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </div>
 
       {/* Delete confirmation dialog */}
@@ -347,96 +506,92 @@ export const KnowledgeBaseManager = ({
 
       {/* Content details dialog */}
       <Dialog open={detailsDialogOpen} onOpenChange={setDetailsDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-xl">
           <DialogHeader>
-            <DialogTitle>Content Details</DialogTitle>
+            <DialogTitle className="text-xl">{selectedContent?.name}</DialogTitle>
             <DialogDescription>
-              Detailed information about this knowledge base content
+              Knowledge base content details
             </DialogDescription>
           </DialogHeader>
           {selectedContent && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <h3 className="text-sm font-semibold text-muted-foreground">Name</h3>
-                  <p className="text-sm mt-1">{selectedContent.name}</p>
-                </div>
-                <div>
-                  <h3 className="text-sm font-semibold text-muted-foreground">Upload Status</h3>
-                  <div className="mt-1">{getStatusBadge(selectedContent.status)}</div>
-                </div>
-                <div>
-                  <h3 className="text-sm font-semibold text-muted-foreground">Type</h3>
-                  <p className="text-sm mt-1">{selectedContent.type || 'Unknown'}</p>
-                </div>
-                <div>
-                  <h3 className="text-sm font-semibold text-muted-foreground">Size</h3>
-                  <p className="text-sm mt-1">{formatSize(selectedContent.size)}</p>
-                </div>
-                <div>
-                  <h3 className="text-sm font-semibold text-muted-foreground">Created</h3>
-                  <p className="text-sm mt-1">{formatDate(selectedContent.createdAt)}</p>
-                </div>
-                <div>
-                  <h3 className="text-sm font-semibold text-muted-foreground">Updated</h3>
-                  <p className="text-sm mt-1">{formatDate(selectedContent.updatedAt)}</p>
-                </div>
-                <div>
-                  <h3 className="text-sm font-semibold text-muted-foreground">ID</h3>
-                  <p className="text-sm mt-1 font-mono break-all">{selectedContent.id}</p>
-                </div>
-                <div>
-                  <h3 className="text-sm font-semibold text-muted-foreground">Access Count</h3>
-                  <p className="text-sm mt-1">{selectedContent.accessCount || 0}</p>
-                </div>
-              </div>
-
-              {selectedContent.description && (
-                <div>
-                  <h3 className="text-sm font-semibold text-muted-foreground">Description</h3>
-                  <p className="text-sm mt-1">{selectedContent.description}</p>
-                </div>
-              )}
-
-              {selectedContent.statusMessage && (
-                <div>
-                  <h3 className="text-sm font-semibold text-muted-foreground">Upload Status Message</h3>
-                  <p className="text-sm mt-1">{selectedContent.statusMessage}</p>
-                </div>
-              )}
-
-              {selectedContent.metadata && Object.keys(selectedContent.metadata).length > 0 && (
-                <div>
-                  <h3 className="text-sm font-semibold text-muted-foreground mb-2">Metadata</h3>
-                  <div className="bg-muted/50 rounded-md p-3 space-y-2">
-                    {Object.entries(selectedContent.metadata).map(([key, value]) => (
-                      <div key={key} className="flex justify-between text-sm">
-                        <span className="font-medium">{key}:</span>
-                        <span className="text-muted-foreground">
-                          {typeof value === 'object' ? JSON.stringify(value) : String(value)}
-                        </span>
-                      </div>
-                    ))}
+            <div className="space-y-6">
+              {/* Status Banner */}
+              <div className="flex items-center justify-between p-4 bg-accent/50 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Icon type="file" size="md" className="text-primary" />
+                  </div>
+                  <div>
+                    <p className="font-medium">{selectedContent.type || 'Document'}</p>
+                    <p className="text-sm text-muted-foreground">{formatSize(selectedContent.size)}</p>
                   </div>
                 </div>
-              )}
-
-              <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-md p-3">
-                <p className="text-sm text-blue-900 dark:text-blue-100">
-                  <strong>Persistent Storage:</strong> This content is permanently stored in your
-                  knowledge base and will remain available across all future sessions until you
-                  explicitly delete it. AI agents can search and reference this content in any
-                  conversation.
-                </p>
+                {getStatusBadge(selectedContent.status)}
               </div>
 
-              <div className="flex justify-end gap-2 pt-4">
+              {/* Key Information */}
+              <div className="space-y-4">
+                {selectedContent.description && (
+                  <div>
+                    <h3 className="text-sm font-semibold mb-2">Description</h3>
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      {selectedContent.description}
+                    </p>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <h3 className="text-sm font-semibold mb-1">Created</h3>
+                    <p className="text-sm text-muted-foreground">{formatDate(selectedContent.createdAt)}</p>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold mb-1">Last Updated</h3>
+                    <p className="text-sm text-muted-foreground">{formatDate(selectedContent.updatedAt)}</p>
+                  </div>
+                </div>
+
+                {selectedContent.accessCount !== undefined && selectedContent.accessCount > 0 && (
+                  <div>
+                    <h3 className="text-sm font-semibold mb-1">Usage</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Referenced {selectedContent.accessCount} {selectedContent.accessCount === 1 ? 'time' : 'times'}
+                    </p>
+                  </div>
+                )}
+
+                {selectedContent.statusMessage && (
+                  <div>
+                    <h3 className="text-sm font-semibold mb-1">Status Message</h3>
+                    <p className="text-sm text-muted-foreground">{selectedContent.statusMessage}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Info Banner */}
+              <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
+                <div className="flex gap-3">
+                  <Icon type="info" size="sm" className="text-primary mt-0.5 flex-shrink-0" />
+                  <div className="text-sm text-muted-foreground">
+                    <p className="font-medium text-foreground mb-1">Persistent Storage</p>
+                    <p>
+                      This content is permanently stored and available across all sessions. 
+                      AI agents can search and reference it in any conversation.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex justify-between gap-2 pt-2">
                 <Button
                   variant="outline"
                   onClick={() => handleRefresh(selectedContent.id)}
                   disabled={isLoading}
+                  className="gap-2"
                 >
-                  Refresh Status
+                  <Icon type="refresh" size="xs" />
+                  Refresh
                 </Button>
                 <Button
                   variant="destructive"
@@ -445,8 +600,10 @@ export const KnowledgeBaseManager = ({
                     handleDeleteClick(selectedContent.id)
                   }}
                   disabled={isLoading}
+                  className="gap-2"
                 >
-                  Delete Content
+                  <Icon type="trash" size="xs" />
+                  Delete
                 </Button>
               </div>
             </div>

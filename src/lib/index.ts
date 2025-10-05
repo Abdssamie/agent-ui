@@ -10,3 +10,10 @@ export type {
   ContentUpdateOptions,
   ContentUploadOptions
 } from './knowledgeBaseService'
+
+export {
+  validateImageFile,
+  validateImageFiles,
+  canAddImage,
+  IMAGE_VALIDATION
+} from './imageValidation'

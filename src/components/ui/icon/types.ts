@@ -37,6 +37,17 @@ export type IconType =
   | 'references'
   | 'trash'
   | 'paperclip'
+  | 'database'
+  | 'file'
+  | 'upload'
+  | 'x-circle'
+  | 'check-circle'
+  | 'x-circle'
+  | 'check-circle'
+  | 'loader'
+  | 'alert-circle'
+  | 'search'
+  | 'info'
 
 export interface IconProps {
   type: IconType

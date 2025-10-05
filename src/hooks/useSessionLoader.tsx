@@ -2,7 +2,7 @@ import { useCallback } from 'react'
 import { getSessionAPI, getAllSessionsAPI } from '@/api/os'
 import { useStore } from '../store'
 import { toast } from 'sonner'
-import { ChatMessage, ToolCall, ReasoningMessage, ChatEntry } from '@/types/os'
+import { ChatMessage, ToolCall, ReasoningMessage, ChatEntry, RunResponse, UserMessage} from '@/types/os'
 import { getJsonMarkdown } from '@/lib/utils'
 
 interface SessionResponse {
@@ -44,7 +44,6 @@ const useSessionLoader = () => {
           selectedId,
           dbId
         )
-        console.log('Fetched sessions:', sessions)
         setSessionsData(sessions.data ?? [])
       } catch {
         toast.error('Error loading sessions')
@@ -70,10 +69,9 @@ const useSessionLoader = () => {
         !dbId
       )
         return
-      console.log(entityType)
 
       try {
-        const response: SessionResponse = await getSessionAPI(
+        const response: RunResponse[] = await getSessionAPI(
           selectedEndpoint,
           entityType,
           sessionId,
@@ -85,73 +83,98 @@ const useSessionLoader = () => {
             const messagesFor = response.flatMap((run) => {
               const filteredMessages: ChatMessage[] = []
 
-              if (run) {
-                filteredMessages.push({
-                  role: 'user',
-                  content: run.run_input ?? '',
-                  created_at: run.created_at
-                })
-              }
+              // Extract user message from the messages array
+              const userMessage = (run.messages as UserMessage[] | undefined)?.find(
+                (msg: any) => msg.role === 'user' && !msg.from_history
+              )
 
-              if (run) {
-                const toolCalls = [
-                  ...(run.tools ?? []),
-                  ...(run.extra_data?.reasoning_messages ?? []).reduce(
-                    (acc: ToolCall[], msg: ReasoningMessage) => {
-                      if (msg.role === 'tool') {
-                        acc.push({
-                          role: msg.role,
-                          content: msg.content,
-                          tool_call_id: msg.tool_call_id ?? '',
-                          tool_name: msg.tool_name ?? '',
-                          tool_args: msg.tool_args ?? {},
-                          tool_call_error: msg.tool_call_error ?? false,
-                          metrics: msg.metrics ?? { time: 0 },
-                          created_at:
-                            msg.created_at ?? Math.floor(Date.now() / 1000)
-                        })
-                      }
-                      return acc
-                    },
-                    []
-                  )
-                ]
+              const userContent = String(userMessage?.content ?? run.run_input ?? '')
 
-                filteredMessages.push({
-                  role: 'agent',
-                  content: (run.content as string) ?? '',
-                  tool_calls: toolCalls.length > 0 ? toolCalls : undefined,
-                  extra_data: run.extra_data,
-                  images: run.images,
-                  videos: run.videos,
-                  audio: run.audio,
-                  response_audio: run.response_audio,
-                  created_at: run.created_at
-                })
-              }
+              // Extract attachments from user message if they exist
+              const userImages = userMessage?.images ? [...userMessage.images] : undefined
+              const userVideos = userMessage?.videos ? [...userMessage.videos] : undefined
+              const userAudio = userMessage?.audio ? [...userMessage.audio] : undefined
+
+              console.log({
+                userImages,
+                userVideos,
+                userAudio,
+                files: userMessage?.files,
+              })
+              filteredMessages.push({
+                role: 'user',
+                content: userContent,
+                created_at: run.created_at,
+                images: userImages,
+                videos: userVideos,
+                audio: userAudio,
+                files: userMessage?.files ? [...userMessage.files] : undefined,
+                  attachments: userMessage?.attachments ? [...userMessage.attachments] : undefined,
+              })
+
+              // Add agent message with tool calls
+              const toolCalls = [
+                ...(run.tools ?? []),
+                ...(run.extra_data?.reasoning_messages ?? []).reduce(
+                  (acc: ToolCall[], msg: ReasoningMessage) => {
+                    if (msg.role === 'tool') {
+                      acc.push({
+                        role: msg.role,
+                        content: msg.content,
+                        tool_call_id: msg.tool_call_id ?? '',
+                        tool_name: msg.tool_name ?? '',
+                        tool_args: msg.tool_args ?? {},
+                        tool_call_error: msg.tool_call_error ?? false,
+                        metrics: msg.metrics ?? { time: 0 },
+                        created_at:
+                          msg.created_at ?? Math.floor(Date.now() / 1000)
+                      })
+                    }
+                    return acc
+                  },
+                  []
+                )
+              ]
+
+              const agentContent = String((run.content as string) ?? '')
+              filteredMessages.push({
+                role: 'agent',
+                content: agentContent,
+                tool_calls: toolCalls.length > 0 ? toolCalls : undefined,
+                extra_data: run.extra_data ? { ...run.extra_data } : undefined,
+                images: run.images ? [...run.images] : undefined,
+                videos: run.videos ? [...run.videos] : undefined,
+                audio: run.audio ? [...run.audio] : undefined,
+                response_audio: run.response_audio ? { ...run.response_audio } : undefined,
+                created_at: run.created_at
+              })
+
               return filteredMessages
             })
 
             const processedMessages = messagesFor.map(
               (message: ChatMessage) => {
-                if (Array.isArray(message.content)) {
-                  const textContent = message.content
+                // Always create a new object to avoid reference issues
+                const newMessage = { ...message }
+
+                if (Array.isArray(newMessage.content)) {
+                  const textContent = newMessage.content
                     .filter((item: { type: string }) => item.type === 'text')
                     .map((item) => item.text)
                     .join(' ')
 
                   return {
-                    ...message,
+                    ...newMessage,
                     content: textContent
                   }
                 }
-                if (typeof message.content !== 'string') {
+                if (typeof newMessage.content !== 'string') {
                   return {
-                    ...message,
-                    content: getJsonMarkdown(message.content)
+                    ...newMessage,
+                    content: getJsonMarkdown(newMessage.content)
                   }
                 }
-                return message
+                return newMessage
               }
             )
 

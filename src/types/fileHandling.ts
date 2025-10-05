@@ -10,6 +10,18 @@ export interface FileAttachment {
     progress?: number
 }
 
+// Image attachment for direct message sending
+export interface ImageAttachment {
+    id: string
+    file: File
+    preview: string // Object URL or base64
+    type: 'image'
+    size: number
+    mimeType: string
+    width?: number
+    height?: number
+}
+
 export interface FileValidationConfig {
     maxFileSize: number // bytes
     maxTotalSize: number // bytes

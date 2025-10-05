@@ -11,6 +11,7 @@ const useChatActions = () => {
   const { chatInputRef } = useStore()
   const selectedEndpoint = useStore((state) => state.selectedEndpoint)
   const [, setSessionId] = useQueryState('session')
+  const [, setView] = useQueryState('view')
   const setMessages = useStore((state) => state.setMessages)
   const setIsEndpointActive = useStore((state) => state.setIsEndpointActive)
   const setIsEndpointLoading = useStore((state) => state.setIsEndpointLoading)
@@ -54,6 +55,7 @@ const useChatActions = () => {
   const clearChat = useCallback(() => {
     setMessages([])
     setSessionId(null)
+    setView(null) // Clear view to show chat instead of knowledge base
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 

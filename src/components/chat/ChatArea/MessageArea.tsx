@@ -6,7 +6,7 @@ import ScrollToBottom from '@/components/chat/ChatArea/ScrollToBottom'
 import { StickToBottom } from 'use-stick-to-bottom'
 
 const MessageArea = () => {
-  const { messages } = useStore()
+  const { messages } = useStore();
 
   return (
     <StickToBottom
@@ -24,4 +24,4 @@ const MessageArea = () => {
   )
 }
 
-export default MessageArea
+export default MessageArea;

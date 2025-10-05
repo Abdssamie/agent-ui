@@ -1,8 +1,15 @@
+/**
+ * @deprecated This component is deprecated and should not be used.
+ * File attachments are now handled directly by the file input in ChatInput.
+ * This component is kept for backward compatibility but is disabled by default.
+ * 
+ * Use the paperclip button in ChatInput to attach files instead.
+ */
+
 'use client'
 import React, { useState, useCallback, useRef, useEffect } from 'react'
 import { toast } from 'sonner'
 import { useStore } from '@/store'
-import { processFiles } from '@/lib/fileValidation'
 import { DragDropState, FileAttachment } from '@/types/fileHandling'
 
 interface FileDropZoneProps {
@@ -11,7 +18,7 @@ interface FileDropZoneProps {
   disabled?: boolean
 }
 
-const FileDropZone = ({ children, onFilesAdded, disabled = false }: FileDropZoneProps) => {
+const FileDropZone = ({ children, onFilesAdded, disabled = true }: FileDropZoneProps) => {
   const [dragState, setDragState] = useState<DragDropState>({
     isDragging: false,
     dragCounter: 0,
@@ -115,44 +122,11 @@ const FileDropZone = ({ children, onFilesAdded, disabled = false }: FileDropZone
       return
     }
 
-    // Get existing files from attachments
-    const existingFiles = attachments.map(a => a.file)
-
-    // Process the files
-    const result = processFiles(droppedFiles, existingFiles, validationConfig)
-
-    // Handle failed files
-    if (result.failed.length > 0) {
-      result.failed.forEach(({ file, error }) => {
-        toast.error(`Failed to add ${file.name}: ${error}`)
-      })
-    }
-
-    // Handle successful files
-    if (result.successful.length > 0) {
-      const newAttachments: FileAttachment[] = result.successful.map((item) => ({
-        id: item.id,
-        file: item.file,
-        uploadStatus: 'pending' as const,
-        progress: 0
-      }))
-
-      // Add to store
-      addAttachments(newAttachments)
-
-      // Call callback if provided
-      if (onFilesAdded) {
-        onFilesAdded(newAttachments)
-      }
-
-      // Show success message
-      const fileWord = newAttachments.length === 1 ? 'file' : 'files'
-      toast.success(`Added ${newAttachments.length} ${fileWord}`)
-    }
-
-    // If all files failed, show a general error
-    if (result.successful.length === 0 && result.failed.length > 0) {
-      toast.error('No files could be added. Please check file types and sizes.')
+    // Simple file handling - just notify about dropped files
+    // Actual file processing is handled by useImageAttachment hook in ChatInput
+    if (droppedFiles.length > 0) {
+      const fileWord = droppedFiles.length === 1 ? 'file' : 'files'
+      toast.info(`${droppedFiles.length} ${fileWord} dropped. Use the attachment button to add files.`)
     }
   }, [disabled, attachments, validationConfig, addAttachments, onFilesAdded])
 

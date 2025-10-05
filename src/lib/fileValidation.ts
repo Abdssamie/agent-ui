@@ -1,89 +1,81 @@
-import {
-  FileValidationConfig,
-  ValidationResult,
-  FileValidationError,
-  BatchProcessingResult,
-  FileProcessingResult
-} from '@/types/fileHandling'
+import { ValidationResult } from '@/types/fileHandling'
 
-// Default validation configuration based on requirements
-export const DEFAULT_FILE_VALIDATION_CONFIG: FileValidationConfig = {
-  maxFileSize: 10 * 1024 * 1024, // 10MB
-  maxTotalSize: 50 * 1024 * 1024, // 50MB
-  maxFileCount: 10,
-  allowedTypes: [
-    // Images
-    'image/jpeg',
-    'image/jpg', 
-    'image/png',
-    'image/gif',
-    'image/webp',
-    // Documents
-    'application/pdf',
-    'text/plain',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // docx
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // xlsx
-    // Videos
-    'video/mp4',
-    'video/webm',
-    // Audio
-    'audio/mpeg', // mp3
-    'audio/wav',
-    'audio/mp4' // m4a
-  ],
-  allowedExtensions: [
-    // Images
-    '.jpg', '.jpeg', '.png', '.gif', '.webp',
-    // Documents  
-    '.pdf', '.txt', '.docx', '.xlsx',
-    // Videos
-    '.mp4', '.webm',
-    // Audio
-    '.mp3', '.wav', '.m4a'
-  ]
-}
+// File attachment validation configuration
+export const FILE_VALIDATION = {
+  // Images for direct display in chat
+  images: {
+    allowedTypes: [
+      'image/jpeg',
+      'image/jpg',
+      'image/png',
+      'image/gif',
+      'image/webp'
+    ],
+    allowedExtensions: ['.jpg', '.jpeg', '.png', '.gif', '.webp'],
+    maxSize: 10 * 1024 * 1024, // 10MB
+  },
+  // Documents for agent processing
+  documents: {
+    allowedTypes: [
+      'application/pdf',
+      'text/plain',
+      'text/markdown',
+      'text/csv',
+      'application/json'
+    ],
+    allowedExtensions: ['.pdf', '.txt', '.md', '.csv', '.json'],
+    maxSize: 20 * 1024 * 1024, // 20MB for documents
+  },
+  maxFilesPerMessage: 5
+} as const
 
 /**
- * Validates a single file against the provided configuration
+ * Validates a file for message attachment
  */
-export function validateFile(
-  file: File, 
-  config: FileValidationConfig = DEFAULT_FILE_VALIDATION_CONFIG
-): ValidationResult {
+export function validateFile(file: File): ValidationResult {
   const errors: string[] = []
   const warnings: string[] = []
 
-  // Validate file size
-  if (file.size > config.maxFileSize) {
-    errors.push(
-      `File "${file.name}" exceeds maximum size limit of ${formatFileSize(config.maxFileSize)}. ` +
-      `Current size: ${formatFileSize(file.size)}`
-    )
-  }
+  const isImage = FILE_VALIDATION.images.allowedTypes.includes(file.type)
+  const isDocument = FILE_VALIDATION.documents.allowedTypes.includes(file.type)
 
-  // Validate file type (MIME type)
-  if (!config.allowedTypes.includes(file.type)) {
+  // Validate file type
+  if (!isImage && !isDocument) {
     errors.push(
-      `File type "${file.type}" is not supported for file "${file.name}". ` +
-      `Supported types: ${config.allowedTypes.join(', ')}`
+      `File type "${file.type}" is not supported. ` +
+      `Supported: Images (JPG, PNG, GIF, WebP) and Documents (PDF, TXT, MD, CSV, JSON)`
     )
   }
 
   // Validate file extension
-  const fileExtension = getFileExtension(file.name)
-  if (fileExtension && !config.allowedExtensions.includes(fileExtension.toLowerCase())) {
+  const extension = getFileExtension(file.name)
+  const allExtensions = [
+    ...FILE_VALIDATION.images.allowedExtensions,
+    ...FILE_VALIDATION.documents.allowedExtensions
+  ]
+  if (extension && !allExtensions.includes(extension.toLowerCase())) {
     errors.push(
-      `File extension "${fileExtension}" is not supported for file "${file.name}". ` +
-      `Supported extensions: ${config.allowedExtensions.join(', ')}`
+      `File extension "${extension}" is not supported.`
     )
   }
 
-  // Add warnings for large files (but within limits)
-  const warningThreshold = config.maxFileSize * 0.8 // 80% of max size
-  if (file.size > warningThreshold && file.size <= config.maxFileSize) {
+  // Validate file size based on type
+  const maxSize = isImage 
+    ? FILE_VALIDATION.images.maxSize 
+    : FILE_VALIDATION.documents.maxSize
+
+  if (file.size > maxSize) {
+    errors.push(
+      `File "${file.name}" exceeds maximum size of ${formatFileSize(maxSize)}. ` +
+      `Current size: ${formatFileSize(file.size)}`
+    )
+  }
+
+  // Warning for large files (80% of max)
+  const warningThreshold = maxSize * 0.8
+  if (file.size > warningThreshold && file.size <= maxSize) {
     warnings.push(
-      `File "${file.name}" is large (${formatFileSize(file.size)}). ` +
-      `Consider compressing if possible.`
+      `File "${file.name}" is large (${formatFileSize(file.size)}).`
     )
   }
 
@@ -95,50 +87,30 @@ export function validateFile(
 }
 
 /**
- * Validates multiple files including count and total size limits
+ * Validates multiple files including count limits
  */
 export function validateFiles(
-  files: File[], 
-  existingFiles: File[] = [],
-  config: FileValidationConfig = DEFAULT_FILE_VALIDATION_CONFIG
+  newFiles: File[],
+  existingFiles: File[] = []
 ): ValidationResult {
   const errors: string[] = []
   const warnings: string[] = []
-  
-  const allFiles = [...existingFiles, ...files]
-  
-  // Validate file count
-  if (allFiles.length > config.maxFileCount) {
-    errors.push(
-      `Too many files selected. Maximum allowed: ${config.maxFileCount}, ` +
-      `current total: ${allFiles.length}`
-    )
-  }
 
-  // Validate total size
-  const totalSize = allFiles.reduce((sum, file) => sum + file.size, 0)
-  if (totalSize > config.maxTotalSize) {
+  const totalCount = existingFiles.length + newFiles.length
+
+  // Validate file count
+  if (totalCount > FILE_VALIDATION.maxFilesPerMessage) {
     errors.push(
-      `Total file size exceeds limit of ${formatFileSize(config.maxTotalSize)}. ` +
-      `Current total: ${formatFileSize(totalSize)}`
+      `Maximum ${FILE_VALIDATION.maxFilesPerMessage} files per message. ` +
+      `Attempting to add ${newFiles.length} to ${existingFiles.length} existing.`
     )
   }
 
   // Validate each individual file
-  for (const file of files) {
-    const fileValidation = validateFile(file, config)
+  for (const file of newFiles) {
+    const fileValidation = validateFile(file)
     errors.push(...fileValidation.errors)
     warnings.push(...fileValidation.warnings)
-  }
-
-  // Check for duplicate filenames
-  const filenames = allFiles.map(f => f.name)
-  const duplicates = filenames.filter((name, index) => filenames.indexOf(name) !== index)
-  if (duplicates.length > 0) {
-    warnings.push(
-      `Duplicate filenames detected: ${[...new Set(duplicates)].join(', ')}. ` +
-      `Files with the same name may overwrite each other.`
-    )
   }
 
   return {
@@ -149,100 +121,39 @@ export function validateFiles(
 }
 
 /**
- * Processes multiple files and returns successful and failed results
+ * Checks if a file can be added without exceeding limits
  */
-export function processFiles(
-  files: File[],
-  existingFiles: File[] = [],
-  config: FileValidationConfig = DEFAULT_FILE_VALIDATION_CONFIG
-): BatchProcessingResult {
-  const successful: any[] = [] // Will be FileAttachment[] when we have the full type
-  const failed: Array<{ file: File; error: string }> = []
-
-  // First validate the batch
-  const batchValidation = validateFiles(files, existingFiles, config)
-  
-  // If batch validation fails due to count or total size, reject all
-  const batchErrors = batchValidation.errors.filter(error => 
-    error.includes('Too many files') || error.includes('Total file size exceeds')
-  )
-  
-  if (batchErrors.length > 0) {
-    files.forEach(file => {
-      failed.push({
-        file,
-        error: batchErrors.join('; ')
-      })
-    })
-    return { successful, failed }
-  }
-
-  // Process individual files
-  files.forEach(file => {
-    const validation = validateFile(file, config)
-    if (validation.isValid) {
-      // Create a basic attachment object (will be enhanced in later tasks)
-      successful.push({
-        id: generateFileId(file),
-        file,
-        uploadStatus: 'pending' as const,
-        progress: 0
-      })
-    } else {
-      failed.push({
-        file,
-        error: validation.errors.join('; ')
-      })
+export function canAddFile(
+  existingCount: number
+): { canAdd: boolean; reason?: string } {
+  if (existingCount >= FILE_VALIDATION.maxFilesPerMessage) {
+    return {
+      canAdd: false,
+      reason: `Maximum ${FILE_VALIDATION.maxFilesPerMessage} files per message`
     }
-  })
-
-  return { successful, failed }
-}
-
-/**
- * Checks if a file type is supported
- */
-export function isFileTypeSupported(
-  file: File,
-  config: FileValidationConfig = DEFAULT_FILE_VALIDATION_CONFIG
-): boolean {
-  const validation = validateFile(file, config)
-  return validation.isValid
-}
-
-/**
- * Gets the file category based on MIME type
- */
-export function getFileCategory(file: File): 'image' | 'document' | 'video' | 'audio' | 'other' {
-  if (file.type.startsWith('image/')) return 'image'
-  if (file.type.startsWith('video/')) return 'video'
-  if (file.type.startsWith('audio/')) return 'audio'
-  if (file.type === 'application/pdf' || 
-      file.type === 'text/plain' ||
-      file.type.includes('document') ||
-      file.type.includes('spreadsheet')) {
-    return 'document'
   }
-  return 'other'
+
+  return { canAdd: true }
 }
 
 /**
- * Formats file size in human-readable format
+ * Checks if a file is an image
  */
-export function formatFileSize(bytes: number): string {
-  if (bytes === 0) return '0 Bytes'
-  
-  const k = 1024
-  const sizes = ['Bytes', 'KB', 'MB', 'GB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+export function isImageFile(file: File): boolean {
+  return FILE_VALIDATION.images.allowedTypes.includes(file.type)
+}
+
+/**
+ * Checks if a file is a document
+ */
+export function isDocumentFile(file: File): boolean {
+  return FILE_VALIDATION.documents.allowedTypes.includes(file.type)
 }
 
 /**
  * Gets file extension from filename
  */
-export function getFileExtension(filename: string): string | null {
+function getFileExtension(filename: string): string | null {
   const lastDotIndex = filename.lastIndexOf('.')
   if (lastDotIndex === -1 || lastDotIndex === filename.length - 1) {
     return null
@@ -251,60 +162,50 @@ export function getFileExtension(filename: string): string | null {
 }
 
 /**
- * Generates a unique ID for a file based on its properties
+ * Formats file size in human-readable format
+ */
+export function formatFileSize(bytes: number): string {
+  if (bytes === 0) return '0 Bytes'
+
+  const k = 1024
+  const sizes = ['Bytes', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+}
+
+/**
+ * Generates a unique ID for a file
  */
 export function generateFileId(file: File): string {
   const timestamp = Date.now()
-  const random = Math.random().toString(36).substring(2, 8)
-  const nameHash = file.name.replace(/[^a-zA-Z0-9]/g, '').substring(0, 8)
+  const random = Math.random().toString(36).substring(2, 15)
+  const nameHash = file.name.replace(/[^a-zA-Z0-9]/g, '').substring(0, 10)
   return `file_${timestamp}_${nameHash}_${random}`
 }
 
-/**
- * Creates validation error objects with detailed information
- */
-export function createValidationError(
-  type: FileValidationError['type'],
-  message: string,
-  filename?: string,
-  actualValue?: number | string,
-  allowedValue?: number | string
-): FileValidationError {
-  return {
-    type,
-    message,
-    filename,
-    actualValue,
-    allowedValue
-  }
-}
+// Re-export IMAGE_VALIDATION for backward compatibility
+export const IMAGE_VALIDATION = {
+  allowedTypes: FILE_VALIDATION.images.allowedTypes,
+  allowedExtensions: FILE_VALIDATION.images.allowedExtensions,
+  maxSize: FILE_VALIDATION.images.maxSize,
+  maxImages: FILE_VALIDATION.maxFilesPerMessage
+} as const
 
-/**
- * Checks if files can be added without exceeding limits
- */
-export function canAddFiles(
-  newFiles: File[],
-  existingFiles: File[] = [],
-  config: FileValidationConfig = DEFAULT_FILE_VALIDATION_CONFIG
-): { canAdd: boolean; reason?: string } {
-  const totalCount = existingFiles.length + newFiles.length
-  if (totalCount > config.maxFileCount) {
-    return {
-      canAdd: false,
-      reason: `Would exceed maximum file count of ${config.maxFileCount}`
-    }
-  }
-
-  const existingSize = existingFiles.reduce((sum, file) => sum + file.size, 0)
-  const newSize = newFiles.reduce((sum, file) => sum + file.size, 0)
-  const totalSize = existingSize + newSize
-
-  if (totalSize > config.maxTotalSize) {
-    return {
-      canAdd: false,
-      reason: `Would exceed maximum total size of ${formatFileSize(config.maxTotalSize)}`
-    }
-  }
-
-  return { canAdd: true }
-}
+// Knowledge base file validation config (supports more file types)
+export const DEFAULT_FILE_VALIDATION_CONFIG = {
+  allowedTypes: [
+    ...FILE_VALIDATION.images.allowedTypes,
+    ...FILE_VALIDATION.documents.allowedTypes,
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
+    'application/msword', // .doc
+  ],
+  allowedExtensions: [
+    ...FILE_VALIDATION.images.allowedExtensions,
+    ...FILE_VALIDATION.documents.allowedExtensions,
+    '.doc',
+    '.docx'
+  ],
+  maxFileSize: 50 * 1024 * 1024, // 50MB for knowledge base
+  maxFileCount: 10
+} as const

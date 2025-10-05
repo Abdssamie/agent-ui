@@ -74,7 +74,18 @@ export const uploadFileToKnowledge = async (
       progressInterval = null
     }
 
-    // Complete progress
+    // Check if upload failed immediately
+    if (response.status === 'failed') {
+      const errorMsg = 'Upload failed on server'
+      onError?.(errorMsg)
+      return {
+        success: false,
+        error: errorMsg
+      }
+    }
+
+    // Complete progress - file uploaded successfully
+    // Note: Backend may still be processing (indexing), but upload is complete
     onProgress?.(100)
 
     // Create knowledge content object
@@ -84,7 +95,7 @@ export const uploadFileToKnowledge = async (
       content_type: attachment.file.type,
       size: attachment.file.size,
       upload_date: new Date().toISOString(),
-      status: response.status === 'failed' ? 'error' : response.status,
+      status: response.status === 'failed' ? 'error' : 'completed',
       metadata: {
         source: 'chat-upload',
         user_context: 'chat-interface',
@@ -92,7 +103,7 @@ export const uploadFileToKnowledge = async (
       }
     }
 
-    // Notify success
+    // Notify success - upload complete (backend processing continues in background)
     onSuccess?.(response.id)
 
     return {

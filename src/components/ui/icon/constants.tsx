@@ -20,7 +20,7 @@ import {
   TailwindTag,
   AgnoTag,
   ReasoningIcon,
-  ReferencesIcon
+  ReferencesIcon,
 } from './custom-icons'
 import { IconTypeMap } from './types'
 import {
@@ -36,7 +36,16 @@ import {
   ChevronDown,
   ChevronUp,
   Trash,
-  Paperclip
+  Paperclip,
+  Database,
+  File,
+  Upload,
+  XCircle,
+  CheckCircle,
+  Search,
+  Loader,
+  Info,
+  AlertCircle
 } from 'lucide-react'
 
 import { PlusIcon } from '@radix-ui/react-icons'
@@ -77,5 +86,14 @@ export const ICONS: IconTypeMap = {
   'plus-icon': PlusIcon,
   references: ReferencesIcon,
   trash: Trash,
-  paperclip: Paperclip
+  paperclip: Paperclip,
+  database: Database,
+  file: File,
+  upload: Upload,
+  'x-circle': XCircle,
+  'check-circle': CheckCircle,
+  loader: Loader,
+  'alert-circle': AlertCircle,
+  search: Search,
+  info: Info
 }

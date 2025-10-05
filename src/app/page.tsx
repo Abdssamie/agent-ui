@@ -8,6 +8,7 @@ import { useSearchParams } from 'next/navigation'
 function HomeContent() {
   const searchParams = useSearchParams()
   const view = searchParams.get('view')
+  const dbId = searchParams.get('db_id')
   const baseUrl = process.env.NEXT_PUBLIC_AGENTOS_URL || 'http://localhost:7777'
   
   return (
@@ -15,7 +16,7 @@ function HomeContent() {
       <Sidebar />
       {view === 'knowledge' ? (
         <div className="flex-1 overflow-auto">
-          <KnowledgeBaseManager baseUrl={baseUrl} />
+          <KnowledgeBaseManager baseUrl={baseUrl} dbId={dbId} />
         </div>
       ) : (
         <ChatArea />
