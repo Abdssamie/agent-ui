@@ -1,10 +1,3 @@
-/**
- * @deprecated This component is deprecated and should not be used.
- * File attachments are now handled directly by the file input in ChatInput.
- * This component is kept for backward compatibility but is disabled by default.
- * 
- * Use the paperclip button in ChatInput to attach files instead.
- */
 
 'use client'
 import React, { useState, useCallback, useRef, useEffect } from 'react'
@@ -18,6 +11,13 @@ interface FileDropZoneProps {
   disabled?: boolean
 }
 
+/**
+ * @deprecated This component is deprecated and should not be used.
+ * File attachments are now handled directly by the file input in ChatInput.
+ * This component is kept for backward compatibility but is disabled by default.
+ *
+ * Use the paperclip button in ChatInput to attach files instead.
+ */
 const FileDropZone = ({ children, onFilesAdded, disabled = true }: FileDropZoneProps) => {
   const [dragState, setDragState] = useState<DragDropState>({
     isDragging: false,
