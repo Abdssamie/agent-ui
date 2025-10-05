@@ -15,7 +15,7 @@ export interface ImageAttachment {
     id: string
     file: File
     preview: string // Object URL or base64
-    type: 'image'
+    type: string
     size: number
     mimeType: string
     width?: number

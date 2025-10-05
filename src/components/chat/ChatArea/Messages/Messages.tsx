@@ -177,4 +177,4 @@ const Messages = ({ messages }: MessageListProps) => {
   )
 }
 
-export default Messages
+export default Messages;

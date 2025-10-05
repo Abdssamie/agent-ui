@@ -69,7 +69,7 @@ export function useImageAttachment(): UseImageAttachmentReturn {
           id,
           file,
           preview,
-          type: 'image', // Keep as 'image' for backward compatibility
+          type: file.type, // Keep as 'image' for backward compatibility
           size: file.size,
           mimeType: file.type
         }

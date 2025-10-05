@@ -86,15 +86,6 @@ const AgentMessage = ({ message }: MessageProps) => {
 }
 
 const UserMessage = memo(({ message }: MessageProps) => {
-  // Separate images from documents based on mime_type
-  const actualImages = message.images?.filter(img => 
-    img.mime_type?.startsWith('image/')
-  ) || []
-  
-  const documents = message.files?.filter(file =>
-    file.mime_type && !file.mime_type.startsWith('image/')
-  ) || []
-
   return (
     <div className="flex items-start gap-4 pt-4 text-start max-md:break-words">
       <div className="flex-shrink-0">
@@ -104,12 +95,12 @@ const UserMessage = memo(({ message }: MessageProps) => {
         <div className="text-md rounded-lg font-geist text-secondary">
           {message.content}
         </div>
-        {actualImages.length > 0 && (
-          <Images images={actualImages} size="small" />
+        {message.images && message.images.length > 0 && (
+          <Images images={message.images} size="small" />
         )}
-        {documents.length > 0 && (
+        {message.files && message.files.length > 0 && (
           <div className="flex flex-wrap gap-2 mt-1">
-            {documents.map((doc, index) => {
+            {message.files.map((doc, index) => {
               const format = doc.format?.toUpperCase() || 
                             doc.mime_type?.split('/')[1]?.toUpperCase() || 
                             'FILE'
@@ -117,7 +108,7 @@ const UserMessage = memo(({ message }: MessageProps) => {
                 <div 
                   key={doc.id || index}
                   className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 rounded-md border border-primary/30"
-                  title={`Attached ${format} document`}
+                  title={doc.filename || `Attached ${format} document`}
                 >
                   <Icon type="file" size="xs" className="text-primary" />
                   <span className="text-xs font-semibold text-primary">

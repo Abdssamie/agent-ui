@@ -2,14 +2,14 @@ import { ValidationResult } from '@/types/fileHandling'
 
 // File attachment validation configuration
 export const FILE_VALIDATION = {
-  // Images for direct display in chat
   images: {
-    allowedTypes: [
-      'image/jpeg',
-      'image/jpg',
-      'image/png',
-      'image/gif',
-      'image/webp'
+    allowedTypes: ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'],
+    allowedExtensions: ['.jpg', '.jpeg', '.png', '.gif', '.webp'],
+    maxSize: 10 * 1024 * 1024, // 10MB
+  },
+  documents: {
+    allowedTypes: ['application/pdf', 'text/plain', 'text/markdown', 'text/csv', 'application/json'],
+    allowedExtensions: ['.pdf', '.
     ],
     allowedExtensions: ['.jpg', '.jpeg', '.png', '.gif', '.webp'],
     maxSize: 10 * 1024 * 1024, // 10MB
@@ -36,8 +36,8 @@ export function validateFile(file: File): ValidationResult {
   const errors: string[] = []
   const warnings: string[] = []
 
-  const isImage = FILE_VALIDATION.images.allowedTypes.includes(file.type)
-  const isDocument = FILE_VALIDATION.documents.allowedTypes.includes(file.type)
+  const isImage = FILE_VALIDATION.images.allowedTypes.includes(file.type as "image/jpeg" | "image/jpg" | "image/png" | "image/gif" | "image/webp")
+  const isDocument = FILE_VALIDATION.documents.allowedTypes.includes(file.type as "application/pdf" | "text/plain" | "text/markdown" | "text/csv" | "application/json")
 
   // Validate file type
   if (!isImage && !isDocument) {
@@ -48,12 +48,12 @@ export function validateFile(file: File): ValidationResult {
   }
 
   // Validate file extension
-  const extension = getFileExtension(file.name)
+  const extension = getFileExtension(file.name)?.toLowerCase() as ".jpg" | ".jpeg" | ".png" | ".gif" | ".webp" | ".pdf" | ".txt" | ".md" | ".csv" | ".json"
   const allExtensions = [
     ...FILE_VALIDATION.images.allowedExtensions,
     ...FILE_VALIDATION.documents.allowedExtensions
   ]
-  if (extension && !allExtensions.includes(extension.toLowerCase())) {
+  if (extension && !allExtensions.includes(extension)) {
     errors.push(
       `File extension "${extension}" is not supported.`
     )
@@ -140,14 +140,14 @@ export function canAddFile(
  * Checks if a file is an image
  */
 export function isImageFile(file: File): boolean {
-  return FILE_VALIDATION.images.allowedTypes.includes(file.type)
+  return FILE_VALIDATION.images.allowedTypes.includes(file.type as "image/jpeg" | "image/jpg" | "image/png" | "image/gif" | "image/webp")
 }
 
 /**
  * Checks if a file is a document
  */
 export function isDocumentFile(file: File): boolean {
-  return FILE_VALIDATION.documents.allowedTypes.includes(file.type)
+  return FILE_VALIDATION.documents.allowedTypes.includes(file.type as "application/pdf" | "text/plain" | "text/markdown" | "text/csv" | "application/json")
 }
 
 /**

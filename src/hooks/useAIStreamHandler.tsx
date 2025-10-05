@@ -145,10 +145,10 @@ const useAIChatStreamHandler = () => {
         return prevMessages
       })
 
-      // Convert attachments to ImageData format for immediate display
+      // Convert attachments to ImageData/FileData format for immediate display
       // Images: convert to base64 for preview
       // Documents: just store metadata (no base64 needed)
-      const imageData = await Promise.all(
+      const processedAttachments = await Promise.all(
         attachments
           ?.filter(att => att && att.file)
           .map(async (att) => {
@@ -164,20 +164,27 @@ const useAIChatStreamHandler = () => {
                 content: base64Content,
                 format: format,
                 mime_type: mimeType,
-                id: att.id || Math.random().toString(36).substring(7)
+                id: att.id || Math.random().toString(36).substring(7),
+                filename: att.file.name,
+                isImage
               }
             } catch (error) {
               console.error('Error processing attachment:', error)
               return null
             }
           }) || []
-      ).then(results => results.filter((img): img is {content: string, format: string, mime_type: string, id: string} => img !== null))
+      ).then(results => results.filter((item): item is {content: string, format: string, mime_type: string, id: string, filename: string, isImage: boolean} => item !== null))
+
+      // Separate images from documents
+      const imageData = processedAttachments.filter(att => att.isImage).map(({ isImage, ...rest }) => rest)
+      const fileData = processedAttachments.filter(att => !att.isImage).map(({ isImage, ...rest }) => rest)
 
       addMessage({
         role: 'user',
         content: formData.get('message') as string,
         created_at: Math.floor(Date.now() / 1000),
-        images: imageData && imageData.length > 0 ? imageData : undefined
+        images: imageData.length > 0 ? imageData : undefined,
+        files: fileData.length > 0 ? fileData : undefined
       })
 
       setIsStreaming(true)
