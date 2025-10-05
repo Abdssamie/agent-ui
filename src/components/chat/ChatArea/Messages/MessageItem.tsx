@@ -6,7 +6,8 @@ import Videos from './Multimedia/Videos'
 import Images from './Multimedia/Images'
 import Audios from './Multimedia/Audios'
 import KnowledgeReferences from './KnowledgeReferences'
-import { memo } from 'react'
+import React, { memo } from 'react'
+import { FileText, File, FileSpreadsheet } from 'lucide-react'
 import AgentThinkingLoader from './AgentThinkingLoader'
 
 interface MessageProps {
@@ -101,16 +102,58 @@ const UserMessage = memo(({ message }: MessageProps) => {
         {message.files && message.files.length > 0 && (
           <div className="flex flex-wrap gap-2 mt-1">
             {message.files.map((doc, index) => {
-              const format = doc.format?.toUpperCase() || 
-                            doc.mime_type?.split('/')[1]?.toUpperCase() || 
+              const mimeType = doc.mime_type?.toLowerCase() || ''
+              const fileExt = doc.filename?.split('.').pop()?.toLowerCase() || ''
+              const fileName = doc.filename || `document_${index + 1}`
+
+              const PDF_ICON_PATH = '/icons/pdf-svgrepo-com.svg';
+
+              // Default values
+              let FileIcon: React.ElementType | 'img' = File; // Can be a component or 'img' string
+              let iconColor = 'text-gray-500';
+              let isSvgFromPublic = false; // Flag to use <img> for public SVG
+
+              if (mimeType.includes('pdf')) {
+                // Use a flag and the static path for the SVG
+                isSvgFromPublic = true;
+                iconColor = 'text-red-500'; // Color is now mostly for the background/container
+              } else if (mimeType.startsWith('text/') || ['txt', 'md', 'markdown'].includes(fileExt)) {
+                FileIcon = FileText;
+                iconColor = 'text-blue-500';
+              } else if (mimeType.startsWith('image/') || ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(fileExt)) {
+                iconColor = 'text-orange-500';
+              } else if (mimeType.includes('spreadsheet') || ['xls', 'xlsx', 'csv'].includes(fileExt)) {
+                FileIcon = FileSpreadsheet;
+                iconColor = 'text-green-600';
+              } else {
+                FileIcon = File;
+                iconColor = 'text-gray-500';
+              }
+
+              const format = doc.format?.toUpperCase() ||
+                            doc.mime_type?.split('/')[1]?.toUpperCase() ||
                             'FILE'
+
               return (
-                <div 
+                <div
                   key={doc.id || index}
-                  className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 rounded-md border border-primary/30"
-                  title={doc.filename || `Attached ${format} document`}
+                  className="flex items-center gap-3 p-3 bg-card rounded-lg border border-border hover:bg-accent transition-colors w-full max-w-xs"
+                  title={fileName}
                 >
-                  <Icon type="file" size="xs" className="text-primary" />
+                  <div className={`p-2 rounded-md bg-${iconColor.split('-')[1]}/10`}>
+                    {/* Conditional rendering for the icon */}
+                    {isSvgFromPublic ? (
+                      // Use <img> tag for the SVG from the public folder
+                      <img
+                        src={PDF_ICON_PATH}
+                        alt="PDF Icon"
+                        className="w-5 h-5"
+                      />
+                    ) : (
+                      // Use the imported component for other file types
+                      <FileIcon className={`w-5 h-5 ${iconColor}`} />
+                    )}
+                  </div>
                   <span className="text-xs font-semibold text-primary">
                     {format}
                   </span>
