@@ -3,14 +3,12 @@ import { useCallback } from 'react'
 import { APIRoutes } from '@/api/routes'
 
 import useChatActions from '@/hooks/useChatActions'
-import { useStore } from '../store'
-import { RunEvent, RunResponseContent, type RunResponse } from '@/types/os'
+import { useStore } from '@/store'
+import { RunEvent, type RunResponse, RunResponseContent, ToolCall } from '@/types/os'
 import { constructEndpointUrl } from '@/lib/constructEndpointUrl'
 import useAIResponseStream from './useAIResponseStream'
-import { ToolCall } from '@/types/os'
 import { useQueryState } from 'nuqs'
 import { getJsonMarkdown } from '@/lib/utils'
-import { Content } from 'next/font/google'
 
 /**
  * Converts a File to base64 string (without data URL prefix)
@@ -122,7 +120,6 @@ const useAIChatStreamHandler = () => {
 
   const handleStreamResponse = useCallback(
     async (input: string | FormData, attachments?: Array<{ id: string; preview: string; file: File }>) => {
-      console.log('[Stream] Starting - setIsStreaming(true)')
       setIsStreaming(true)
 
       const formData = input instanceof FormData ? input : new FormData()
@@ -223,22 +220,10 @@ const useAIChatStreamHandler = () => {
         formData.append('stream', 'true')
         formData.append('session_id', sessionId ?? '')
 
-        console.log('[Stream] Calling streamResponse...')
         await streamResponse({
           apiUrl: RunUrl,
           requestBody: formData,
           onChunk: (chunk: RunResponse) => {
-            // Log every chunk for debugging
-            console.log('[Stream Chunk]', {
-              event: chunk.event,
-              hasContent: !!chunk.content,
-              contentLength: typeof chunk.content === 'string' ? chunk.content.length : 'N/A',
-              hasTool: !!chunk.tool,
-              hasTools: !!chunk.tools,
-              timestamp: new Date().toISOString(),
-              content: chunk.content
-            })
-            
             if (
               chunk.event === RunEvent.RunStarted ||
               chunk.event === RunEvent.TeamRunStarted ||
@@ -412,21 +397,19 @@ const useAIChatStreamHandler = () => {
               chunk.event === RunEvent.TeamMemoryUpdateStarted ||
               chunk.event === RunEvent.TeamMemoryUpdateCompleted
             ) {
-              console.log('[Stream] Memory update event:', chunk.event)
               // No-op for now; could surface a lightweight UI indicator in the future
             } else if (
               chunk.event === RunEvent.RunCompleted ||
               chunk.event === RunEvent.TeamRunCompleted
             ) {
-              console.log('[Stream] RunCompleted - updating metadata and re-enabling UI')
-              
               // Re-enable UI immediately - content streaming is done
               // User can start typing/attaching while we process final metadata
               setIsStreaming(false)
               queueMicrotask(() => focusChatInput())
               
               setMessages((prevMessages) => {
-                const newMessages = prevMessages.map((message, index) => {
+
+                return prevMessages.map((message, index) => {
                   if (
                     index === prevMessages.length - 1 &&
                     message.role === 'agent'
@@ -456,12 +439,10 @@ const useAIChatStreamHandler = () => {
                   }
                   return message
                 })
-                return newMessages
               })
             }
           },
           onError: (error) => {
-            console.log('[Stream] onError called:', error.message)
             updateMessagesWithErrorState();
             setStreamingErrorMessage(error.message);
             if (newSessionId) {
@@ -474,13 +455,10 @@ const useAIChatStreamHandler = () => {
             }
           },
           onComplete: () => {
-            console.log('[Stream] onComplete called')
             // Streaming state is handled in finally block
           }
         })
-        console.log('[Stream] streamResponse promise resolved')
       } catch (error) {
-        console.log('[Stream] Catch block - error:', error)
         updateMessagesWithErrorState()
         setStreamingErrorMessage(
           error instanceof Error ? error.message : String(error)
@@ -494,12 +472,10 @@ const useAIChatStreamHandler = () => {
           )
         }
       } finally {
-        console.log('[Stream] Finally block')
         // Set streaming to false in case RunCompleted wasn't received (error cases)
         setIsStreaming(false)
         // Focus input in next tick to avoid blocking state update
         queueMicrotask(() => {
-          console.log('[Stream] Focusing chat input')
           focusChatInput()
         })
       }

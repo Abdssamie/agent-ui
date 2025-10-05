@@ -77,7 +77,6 @@ const useSessionLoader = () => {
           sessionId,
           dbId
         )
-        console.log('Fetched session:', response)
         if (response) {
           if (Array.isArray(response)) {
             const messagesFor = response.flatMap((run) => {
@@ -95,12 +94,6 @@ const useSessionLoader = () => {
               const userVideos = userMessage?.videos ? [...userMessage.videos] : undefined
               const userAudio = userMessage?.audio ? [...userMessage.audio] : undefined
 
-              console.log({
-                userImages,
-                userVideos,
-                userAudio,
-                files: userMessage?.files,
-              })
               filteredMessages.push({
                 role: 'user',
                 content: userContent,

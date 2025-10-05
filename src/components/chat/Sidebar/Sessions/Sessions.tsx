@@ -51,7 +51,6 @@ const Sessions = () => {
     isSessionsLoading
   } = useStore()
 
-  console.log({ sessionsData })
 
   const [isScrolling, setIsScrolling] = useState(false)
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(
