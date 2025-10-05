@@ -25,6 +25,35 @@ const ALL_ALLOWED_EXTENSIONS = [
   ...FILE_VALIDATION.documents.allowedExtensions
 ] as readonly string[]
 
+
+/**
+ * Returns a string category for the file: 'image', 'audio', 'video', 'document', or 'other'.
+ */
+export function getFileCategory(file: File): 'image' | 'audio' | 'video' | 'document' | 'other' {
+  const mimeType = file.type.toLowerCase()
+
+  if (mimeType.startsWith('image/')) {
+    // Check against explicitly allowed image types if desired, but general 'image/' is safer for classification
+    return 'image'
+  }
+
+  if (mimeType.startsWith('audio/')) {
+    return 'audio'
+  }
+
+  if (mimeType.startsWith('video/')) {
+    return 'video'
+  }
+
+  // Check against explicitly allowed document types
+  if (isDocumentFile(file) || mimeType.startsWith('application/') || mimeType.startsWith('text/')) {
+    return 'document'
+  }
+
+  return 'other'
+}
+
+
 /**
  * Validates a file for message attachment
  */
