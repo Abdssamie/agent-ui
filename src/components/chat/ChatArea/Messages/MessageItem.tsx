@@ -137,7 +137,7 @@ const UserMessage = memo(({ message }: MessageProps) => {
               return (
                 <div
                   key={doc.id || index}
-                  className="flex items-center gap-3 p-3 bg-card rounded-lg border border-border hover:bg-accent transition-colors w-full max-w-xs"
+                  className="inline-flex items-center gap-3 p-3 bg-card rounded-lg border border-border hover:bg-accent transition-colors"
                   title={fileName}
                 >
                   <div className={`p-2 rounded-md bg-${iconColor.split('-')[1]}/10`}>
