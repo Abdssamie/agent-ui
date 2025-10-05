@@ -9,25 +9,21 @@ export const FILE_VALIDATION = {
   },
   documents: {
     allowedTypes: ['application/pdf', 'text/plain', 'text/markdown', 'text/csv', 'application/json'],
-    allowedExtensions: ['.pdf', '.
-    ],
-    allowedExtensions: ['.jpg', '.jpeg', '.png', '.gif', '.webp'],
-    maxSize: 10 * 1024 * 1024, // 10MB
-  },
-  // Documents for agent processing
-  documents: {
-    allowedTypes: [
-      'application/pdf',
-      'text/plain',
-      'text/markdown',
-      'text/csv',
-      'application/json'
-    ],
     allowedExtensions: ['.pdf', '.txt', '.md', '.csv', '.json'],
-    maxSize: 20 * 1024 * 1024, // 20MB for documents
+    maxSize: 20 * 1024 * 1024, // 20MB
   },
   maxFilesPerMessage: 5
 } as const
+
+const ALL_ALLOWED_TYPES = [
+  ...FILE_VALIDATION.images.allowedTypes,
+  ...FILE_VALIDATION.documents.allowedTypes
+] as readonly string[]
+
+const ALL_ALLOWED_EXTENSIONS = [
+  ...FILE_VALIDATION.images.allowedExtensions,
+  ...FILE_VALIDATION.documents.allowedExtensions
+] as readonly string[]
 
 /**
  * Validates a file for message attachment
@@ -36,47 +32,35 @@ export function validateFile(file: File): ValidationResult {
   const errors: string[] = []
   const warnings: string[] = []
 
-  const isImage = FILE_VALIDATION.images.allowedTypes.includes(file.type as "image/jpeg" | "image/jpg" | "image/png" | "image/gif" | "image/webp")
-  const isDocument = FILE_VALIDATION.documents.allowedTypes.includes(file.type as "application/pdf" | "text/plain" | "text/markdown" | "text/csv" | "application/json")
+  const isImage = isImageFile(file)
+  const isDocument = isDocumentFile(file)
 
   // Validate file type
   if (!isImage && !isDocument) {
     errors.push(
-      `File type "${file.type}" is not supported. ` +
-      `Supported: Images (JPG, PNG, GIF, WebP) and Documents (PDF, TXT, MD, CSV, JSON)`
+      `File type "${file.type}" is not supported. Supported: Images (JPG, PNG, GIF, WebP) and Documents (PDF, TXT, MD, CSV, JSON)`
     )
   }
 
   // Validate file extension
-  const extension = getFileExtension(file.name)?.toLowerCase() as ".jpg" | ".jpeg" | ".png" | ".gif" | ".webp" | ".pdf" | ".txt" | ".md" | ".csv" | ".json"
-  const allExtensions = [
-    ...FILE_VALIDATION.images.allowedExtensions,
-    ...FILE_VALIDATION.documents.allowedExtensions
-  ]
-  if (extension && !allExtensions.includes(extension)) {
-    errors.push(
-      `File extension "${extension}" is not supported.`
-    )
+  const extension = getFileExtension(file.name)?.toLowerCase()
+  if (extension && !ALL_ALLOWED_EXTENSIONS.includes(extension)) {
+    errors.push(`File extension "${extension}" is not supported.`)
   }
 
   // Validate file size based on type
-  const maxSize = isImage 
-    ? FILE_VALIDATION.images.maxSize 
-    : FILE_VALIDATION.documents.maxSize
+  const maxSize = isImage ? FILE_VALIDATION.images.maxSize : FILE_VALIDATION.documents.maxSize
 
   if (file.size > maxSize) {
     errors.push(
-      `File "${file.name}" exceeds maximum size of ${formatFileSize(maxSize)}. ` +
-      `Current size: ${formatFileSize(file.size)}`
+      `File "${file.name}" exceeds maximum size of ${formatFileSize(maxSize)}. Current size: ${formatFileSize(file.size)}`
     )
   }
 
   // Warning for large files (80% of max)
   const warningThreshold = maxSize * 0.8
   if (file.size > warningThreshold && file.size <= maxSize) {
-    warnings.push(
-      `File "${file.name}" is large (${formatFileSize(file.size)}).`
-    )
+    warnings.push(`File "${file.name}" is large (${formatFileSize(file.size)}).`)
   }
 
   return {
@@ -89,29 +73,23 @@ export function validateFile(file: File): ValidationResult {
 /**
  * Validates multiple files including count limits
  */
-export function validateFiles(
-  newFiles: File[],
-  existingFiles: File[] = []
-): ValidationResult {
+export function validateFiles(newFiles: File[], existingFiles: File[] = []): ValidationResult {
   const errors: string[] = []
   const warnings: string[] = []
-
   const totalCount = existingFiles.length + newFiles.length
 
-  // Validate file count
   if (totalCount > FILE_VALIDATION.maxFilesPerMessage) {
     errors.push(
-      `Maximum ${FILE_VALIDATION.maxFilesPerMessage} files per message. ` +
-      `Attempting to add ${newFiles.length} to ${existingFiles.length} existing.`
+      `Maximum ${FILE_VALIDATION.maxFilesPerMessage} files per message. Attempting to add ${newFiles.length} to ${existingFiles.length} existing.`
     )
   }
 
   // Validate each individual file
-  for (const file of newFiles) {
-    const fileValidation = validateFile(file)
-    errors.push(...fileValidation.errors)
-    warnings.push(...fileValidation.warnings)
-  }
+  newFiles.forEach(file => {
+    const { errors: fileErrors, warnings: fileWarnings } = validateFile(file)
+    errors.push(...fileErrors)
+    warnings.push(...fileWarnings)
+  })
 
   return {
     isValid: errors.length === 0,
@@ -123,16 +101,13 @@ export function validateFiles(
 /**
  * Checks if a file can be added without exceeding limits
  */
-export function canAddFile(
-  existingCount: number
-): { canAdd: boolean; reason?: string } {
+export function canAddFile(existingCount: number): { canAdd: boolean; reason?: string } {
   if (existingCount >= FILE_VALIDATION.maxFilesPerMessage) {
     return {
       canAdd: false,
       reason: `Maximum ${FILE_VALIDATION.maxFilesPerMessage} files per message`
     }
   }
-
   return { canAdd: true }
 }
 
@@ -140,14 +115,14 @@ export function canAddFile(
  * Checks if a file is an image
  */
 export function isImageFile(file: File): boolean {
-  return FILE_VALIDATION.images.allowedTypes.includes(file.type as "image/jpeg" | "image/jpg" | "image/png" | "image/gif" | "image/webp")
+  return (FILE_VALIDATION.images.allowedTypes as readonly string[]).includes(file.type)
 }
 
 /**
  * Checks if a file is a document
  */
 export function isDocumentFile(file: File): boolean {
-  return FILE_VALIDATION.documents.allowedTypes.includes(file.type as "application/pdf" | "text/plain" | "text/markdown" | "text/csv" | "application/json")
+  return (FILE_VALIDATION.documents.allowedTypes as readonly string[]).includes(file.type)
 }
 
 /**
@@ -155,9 +130,7 @@ export function isDocumentFile(file: File): boolean {
  */
 function getFileExtension(filename: string): string | null {
   const lastDotIndex = filename.lastIndexOf('.')
-  if (lastDotIndex === -1 || lastDotIndex === filename.length - 1) {
-    return null
-  }
+  if (lastDotIndex === -1 || lastDotIndex === filename.length - 1) return null
   return filename.substring(lastDotIndex)
 }
 
@@ -171,7 +144,7 @@ export function formatFileSize(bytes: number): string {
   const sizes = ['Bytes', 'KB', 'MB', 'GB']
   const i = Math.floor(Math.log(bytes) / Math.log(k))
 
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`
 }
 
 /**
@@ -184,7 +157,7 @@ export function generateFileId(file: File): string {
   return `file_${timestamp}_${nameHash}_${random}`
 }
 
-// Re-export IMAGE_VALIDATION for backward compatibility
+// Backward compatibility export
 export const IMAGE_VALIDATION = {
   allowedTypes: FILE_VALIDATION.images.allowedTypes,
   allowedExtensions: FILE_VALIDATION.images.allowedExtensions,
@@ -192,20 +165,18 @@ export const IMAGE_VALIDATION = {
   maxImages: FILE_VALIDATION.maxFilesPerMessage
 } as const
 
-// Knowledge base file validation config (supports more file types)
+// Knowledge base file validation (supports more file types)
 export const DEFAULT_FILE_VALIDATION_CONFIG = {
   allowedTypes: [
-    ...FILE_VALIDATION.images.allowedTypes,
-    ...FILE_VALIDATION.documents.allowedTypes,
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
-    'application/msword', // .doc
+    ...ALL_ALLOWED_TYPES,
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/msword',
   ],
   allowedExtensions: [
-    ...FILE_VALIDATION.images.allowedExtensions,
-    ...FILE_VALIDATION.documents.allowedExtensions,
+    ...ALL_ALLOWED_EXTENSIONS,
     '.doc',
     '.docx'
   ],
-  maxFileSize: 50 * 1024 * 1024, // 50MB for knowledge base
+  maxFileSize: 50 * 1024 * 1024, // 50MB
   maxFileCount: 10
 } as const
