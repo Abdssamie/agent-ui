@@ -82,7 +82,7 @@ const ImageThumbnail: React.FC<ImageThumbnailProps> = ({ attachment, onRemove })
   const [isLoading, setIsLoading] = React.useState(true)
 
   // Check if this is an image or document
-  const isImage = attachment.preview && attachment.preview.startsWith('blob:')
+  const isImage = attachment.preview && attachment.preview.startsWith('blob:') && attachment.type.startsWith('image/')
   const isDocument = !isImage
 
   const handleRemove = () => {
