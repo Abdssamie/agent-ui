@@ -9,6 +9,7 @@ import Tooltip from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { useFileUpload } from '@/hooks/useFileUpload'
+import Image from 'next/image'
 
 interface FilePreviewItemProps {
   attachment: FileAttachment
@@ -22,22 +23,30 @@ const FilePreviewItem: React.FC<FilePreviewItemProps> = ({ attachment, onRemove,
   const category = getFileCategory(attachment.file)
   const isUploading = useStore((state) => state.isUploading)
 
-  // Generate thumbnail for images
+  // Generate thumbnail for images with caching
   useEffect(() => {
     if (category === 'image' && attachment.file) {
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        setThumbnail(reader.result as string)
-      }
-      reader.readAsDataURL(attachment.file)
+      // Import dynamically to avoid circular dependencies
+      import('@/lib/fileOptimization').then(({ generateThumbnailWithCache, fileMemoryManager }) => {
+        generateThumbnailWithCache(attachment.file, 200)
+          .then((preview) => {
+            setThumbnail(preview)
+          })
+          .catch((error) => {
+            console.error('Failed to generate thumbnail:', error)
+          })
+      })
     }
 
     return () => {
-      if (thumbnail) {
-        URL.revokeObjectURL(thumbnail)
+      // Cleanup is handled by the memory manager
+      if (thumbnail && thumbnail.startsWith('blob:')) {
+        import('@/lib/fileOptimization').then(({ fileMemoryManager }) => {
+          fileMemoryManager.revokeObjectURL(thumbnail)
+        })
       }
     }
-  }, [attachment.file, category])
+  }, [attachment.file, category, thumbnail])
 
   const handleRemoveClick = () => {
     setShowConfirmation(true)
@@ -112,7 +121,7 @@ const FilePreviewItem: React.FC<FilePreviewItemProps> = ({ attachment, onRemove,
       <Tooltip content={tooltipContent} side="top">
         <div className="relative w-16 h-16 flex items-center justify-center bg-accent rounded-md overflow-hidden">
           {category === 'image' && thumbnail ? (
-            <img
+            <Image
               src={thumbnail}
               alt={attachment.file.name}
               className="w-full h-full object-cover"

@@ -22,7 +22,7 @@ export function validateImageFile(file: File): ValidationResult {
   const warnings: string[] = []
 
   // Validate file type
-  if (!IMAGE_VALIDATION.allowedTypes.includes(file.type)) {
+  if (!IMAGE_VALIDATION.allowedTypes.includes(file.type as "image/jpeg" | "image/jpg" | "image/png" | "image/gif" | "image/webp")) {
     errors.push(
       `Only images are supported (JPG, PNG, GIF, WebP). "${file.name}" has type "${file.type}".`
     )
@@ -30,7 +30,7 @@ export function validateImageFile(file: File): ValidationResult {
 
   // Validate file extension
   const extension = getFileExtension(file.name)
-  if (extension && !IMAGE_VALIDATION.allowedExtensions.includes(extension.toLowerCase())) {
+  if (extension && !IMAGE_VALIDATION.allowedExtensions.includes(extension.toLowerCase() as ".jpg" | ".jpeg" | ".png" | ".gif" | ".webp")) {
     errors.push(
       `File extension "${extension}" is not supported. Allowed: ${IMAGE_VALIDATION.allowedExtensions.join(', ')}`
     )

@@ -9,6 +9,7 @@ import KnowledgeReferences from './KnowledgeReferences'
 import React, { memo } from 'react'
 import { FileText, File, FileSpreadsheet } from 'lucide-react'
 import AgentThinkingLoader from './AgentThinkingLoader'
+import Image from 'next/image'
 
 interface MessageProps {
   message: ChatMessage
@@ -111,7 +112,7 @@ const UserMessage = memo(({ message }: MessageProps) => {
               // Default values
               let FileIcon: React.ElementType | 'img' = File; // Can be a component or 'img' string
               let iconColor = 'text-gray-500';
-              let isSvgFromPublic = false; // Flag to use <img> for public SVG
+              let isSvgFromPublic = false; // Flag to use <Image> for public SVG
 
               if (mimeType.includes('pdf')) {
                 // Use a flag and the static path for the SVG
@@ -143,8 +144,8 @@ const UserMessage = memo(({ message }: MessageProps) => {
                   <div className={`p-2 rounded-md bg-${iconColor.split('-')[1]}/10`}>
                     {/* Conditional rendering for the icon */}
                     {isSvgFromPublic ? (
-                      // Use <img> tag for the SVG from the public folder
-                      <img
+                      // Use <Image> tag for the SVG from the public folder
+                      <Image
                         src={PDF_ICON_PATH}
                         alt="PDF Icon"
                         className="w-5 h-5"

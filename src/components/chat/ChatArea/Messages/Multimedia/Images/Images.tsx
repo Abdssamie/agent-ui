@@ -2,6 +2,7 @@ import { memo } from 'react'
 
 import { type ImageData } from '@/types/os'
 import { cn } from '@/lib/utils'
+import Image from 'next/image'
 
 interface ImagesProps {
   images: ImageData[]
@@ -45,7 +46,7 @@ const Images = ({ images, size = 'normal' }: ImagesProps) => {
             size === 'small' ? 'h-16 w-16' : ''
           )}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <Image
               src={imageSrc}
               alt={image.revised_prompt || 'Image'}
               className={cn(

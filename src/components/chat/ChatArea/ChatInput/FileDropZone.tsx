@@ -26,7 +26,7 @@ const FileDropZone = ({ children, onFilesAdded, disabled = true }: FileDropZoneP
   })
 
   const dropZoneRef = useRef<HTMLDivElement>(null)
-  
+
   const attachments = useStore((state) => state.attachments)
   const validationConfig = useStore((state) => state.validationConfig)
   const addAttachments = useStore((state) => state.addAttachments)
@@ -56,10 +56,10 @@ const FileDropZone = ({ children, onFilesAdded, disabled = true }: FileDropZoneP
 
     setDragState((prev) => {
       const newCounter = prev.dragCounter + 1
-      
+
       // Check if the drag contains files
       const hasFiles = e.dataTransfer.types.includes('Files')
-      
+
       return {
         isDragging: newCounter > 0,
         dragCounter: newCounter,
@@ -76,7 +76,7 @@ const FileDropZone = ({ children, onFilesAdded, disabled = true }: FileDropZoneP
 
     setDragState((prev) => {
       const newCounter = prev.dragCounter - 1
-      
+
       return {
         isDragging: newCounter > 0,
         dragCounter: newCounter,
@@ -128,7 +128,7 @@ const FileDropZone = ({ children, onFilesAdded, disabled = true }: FileDropZoneP
       const fileWord = droppedFiles.length === 1 ? 'file' : 'files'
       toast.info(`${droppedFiles.length} ${fileWord} dropped. Use the attachment button to add files.`)
     }
-  }, [disabled, attachments, validationConfig, addAttachments, onFilesAdded])
+  }, [disabled])
 
   return (
     <div
@@ -142,25 +142,22 @@ const FileDropZone = ({ children, onFilesAdded, disabled = true }: FileDropZoneP
       {/* Drag overlay with visual feedback */}
       {dragState.isDragging && (
         <div
-          className={`absolute inset-0 z-50 flex items-center justify-center rounded-xl border-2 border-dashed transition-all ${
-            dragState.isValidDrop
+          className={`absolute inset-0 z-50 flex items-center justify-center rounded-xl border-2 border-dashed transition-all ${dragState.isValidDrop
               ? 'border-primary bg-primary/10 backdrop-blur-sm'
               : 'border-red-500 bg-red-500/10 backdrop-blur-sm'
-          }`}
+            }`}
           style={{ pointerEvents: 'none' }}
         >
           <div className="flex flex-col items-center gap-2 text-center">
             <div
-              className={`text-4xl ${
-                dragState.isValidDrop ? 'text-primary' : 'text-red-500'
-              }`}
+              className={`text-4xl ${dragState.isValidDrop ? 'text-primary' : 'text-red-500'
+                }`}
             >
               {dragState.isValidDrop ? '📎' : '⚠️'}
             </div>
             <p
-              className={`text-sm font-medium ${
-                dragState.isValidDrop ? 'text-primary' : 'text-red-500'
-              }`}
+              className={`text-sm font-medium ${dragState.isValidDrop ? 'text-primary' : 'text-red-500'
+                }`}
             >
               {dragState.isValidDrop
                 ? 'Drop files here to attach'

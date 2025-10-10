@@ -81,6 +81,8 @@ export interface KnowledgeContent {
     metadata: {
         source: string
         user_context: string
+        chunked?: boolean
+        total_chunks?: number 
         session_id?: string
     }
 }

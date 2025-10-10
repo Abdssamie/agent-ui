@@ -8,8 +8,6 @@ import {
   showSuccessNotification,
   showInfoNotification,
   retryOperation,
-  FileErrorType,
-  FileHandlingError
 } from './errorHandling'
 
 export interface UploadOptions {
@@ -95,7 +93,7 @@ export const uploadFileToKnowledge = async (
       content_type: attachment.file.type,
       size: attachment.file.size,
       upload_date: new Date().toISOString(),
-      status: response.status === 'failed' ? 'error' : 'completed',
+      status: response.status,
       metadata: {
         source: 'chat-upload',
         user_context: 'chat-interface',
@@ -115,12 +113,6 @@ export const uploadFileToKnowledge = async (
     // Parse and classify the error
     const parsedError = parseError(error)
     const errorMessage = parsedError.userMessage
-    
-    // Clear progress interval if it exists
-    if (progressInterval) {
-      clearInterval(progressInterval)
-      progressInterval = null
-    }
     
     // Notify error with context
     onError?.(errorMessage)

@@ -6,6 +6,7 @@ import Icon from '@/components/ui/icon'
 import Tooltip from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import { formatFileSize } from '@/lib/fileValidation'
+import Image from 'next/image'
 
 interface ImageAttachmentPreviewProps {
   attachments: ImageAttachment[]
@@ -85,7 +86,24 @@ const ImageThumbnail: React.FC<ImageThumbnailProps> = ({ attachment, onRemove })
   const isImage = attachment.preview && attachment.preview.startsWith('blob:') && attachment.type.startsWith('image/')
   const isDocument = !isImage
 
+  // Cleanup on unmount
+  React.useEffect(() => {
+    return () => {
+      if (attachment.preview && attachment.preview.startsWith('blob:')) {
+        import('@/lib/fileOptimization').then(({ fileMemoryManager }) => {
+          fileMemoryManager.revokeObjectURL(attachment.preview!)
+        })
+      }
+    }
+  }, [attachment.preview])
+
   const handleRemove = () => {
+    // Cleanup before removing
+    if (attachment.preview && attachment.preview.startsWith('blob:')) {
+      import('@/lib/fileOptimization').then(({ fileMemoryManager }) => {
+        fileMemoryManager.revokeObjectURL(attachment.preview!)
+      })
+    }
     onRemove(attachment.id)
   }
 
@@ -167,8 +185,8 @@ const ImageThumbnail: React.FC<ImageThumbnailProps> = ({ attachment, onRemove })
                   <span className="text-[10px] text-center px-1">Failed to load</span>
                 </div>
               ) : (
-                <img
-                  src={attachment.preview || undefined}
+                <Image
+                  src={attachment.preview}
                   alt={attachment.file.name}
                   className="w-full h-full object-cover"
                   loading="lazy"

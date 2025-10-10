@@ -2,7 +2,14 @@ import { useCallback } from 'react'
 import { useStore } from '@/store'
 import { FileAttachment } from '@/types/fileHandling'
 import { uploadFileToKnowledge, uploadFilesToKnowledge, retryUpload } from '@/lib/fileUploadService'
+import { uploadFileWithChunking, uploadFilesWithChunking } from '@/lib/chunkedUploadService'
 import { toast } from 'sonner'
+
+export interface UploadOptions {
+  useChunking?: boolean
+  enableCompression?: boolean
+  metadata?: Record<string, any>
+}
 
 export const useFileUpload = () => {
   const selectedEndpoint = useStore((state) => state.selectedEndpoint)
@@ -18,13 +25,18 @@ export const useFileUpload = () => {
    * Upload a single file attachment
    */
   const uploadFile = useCallback(
-    async (attachment: FileAttachment, metadata?: Record<string, any>) => {
+    async (attachment: FileAttachment, options: UploadOptions = {}) => {
+      const { useChunking = true, enableCompression = true, metadata = {} } = options
+
       // Update status to uploading
       updateAttachment(attachment.id, { uploadStatus: 'uploading', progress: 0 })
       setIsUploading(true)
 
       try {
-        const result = await uploadFileToKnowledge(attachment, {
+        // Use chunked upload for large files if enabled
+        const uploadFn = useChunking ? uploadFileWithChunking : uploadFileToKnowledge
+
+        const result = await uploadFn(attachment, {
           baseUrl: selectedEndpoint,
           onProgress: (progress) => {
             setUploadProgress(attachment.id, progress)
@@ -38,7 +50,8 @@ export const useFileUpload = () => {
             setAttachmentError(attachment.id, error)
             toast.error(`Failed to upload ${attachment.file.name}: ${error}`)
           },
-          metadata
+          metadata,
+          enableCompression,
         })
 
         // Add to knowledge contents if successful
@@ -66,7 +79,9 @@ export const useFileUpload = () => {
    * Upload all pending attachments
    */
   const uploadAllFiles = useCallback(
-    async (metadata?: Record<string, any>) => {
+    async (options: UploadOptions = {}) => {
+      const { useChunking = true, enableCompression = true, metadata = {} } = options
+
       const pendingAttachments = attachments.filter(
         (attachment) => attachment.uploadStatus === 'pending'
       )
@@ -78,7 +93,10 @@ export const useFileUpload = () => {
       setIsUploading(true)
 
       try {
-        const results = await uploadFilesToKnowledge(pendingAttachments, {
+        // Use chunked upload service if enabled
+        const uploadFn = useChunking ? uploadFilesWithChunking : uploadFilesToKnowledge
+
+        const results = await uploadFn(pendingAttachments, {
           baseUrl: selectedEndpoint,
           onFileProgress: (attachmentId, progress) => {
             setUploadProgress(attachmentId, progress)
@@ -109,7 +127,9 @@ export const useFileUpload = () => {
               toast.error(`${failCount} file${failCount > 1 ? 's' : ''} failed to upload`)
             }
           },
-          metadata
+          metadata,
+          enableCompression,
+          maxConcurrent: 2,
         })
 
         // Add successful uploads to knowledge contents
