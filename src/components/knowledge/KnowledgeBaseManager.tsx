@@ -50,7 +50,7 @@ interface KnowledgeBaseManagerProps {
 export const KnowledgeBaseManager = ({
   baseUrl,
   dbId,
-  onContentSelect
+  // onContentSelect
 }: KnowledgeBaseManagerProps) => {
   const {
     contents,
@@ -103,7 +103,7 @@ export const KnowledgeBaseManager = ({
 
   const handleConfirmDelete = async () => {
     if (contentToDelete) {
-      await deleteContent(contentToDelete)
+      await deleteContent(contentToDelete, dbId ?? undefined)
       setContentToDelete(null)
       setDeleteDialogOpen(false)
     }
@@ -111,19 +111,19 @@ export const KnowledgeBaseManager = ({
 
   const handleBatchDelete = async () => {
     if (selectedIds.size > 0) {
-      await batchDelete(Array.from(selectedIds))
+      await batchDelete(Array.from(selectedIds), dbId ?? undefined)
       setSelectedIds(new Set())
     }
   }
 
   const handleDeleteAll = async () => {
-    await deleteAllContents()
+    await deleteAllContents(dbId ?? undefined)
     setDeleteAllDialogOpen(false)
     setSelectedIds(new Set())
   }
 
   const handleRefresh = async (id: string) => {
-    await refreshContent(id)
+    await refreshContent(id, dbId ?? undefined)
   }
 
   const handleViewDetails = (content: KnowledgeBaseContent) => {

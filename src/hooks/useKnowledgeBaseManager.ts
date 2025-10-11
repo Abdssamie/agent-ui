@@ -1,13 +1,13 @@
 // Custom hook for knowledge base content management
 // Provides comprehensive operations for persistent knowledge base
 
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useStore } from '@/store'
 import {
-  knowledgeBaseService,
-  KnowledgeBaseContent,
   ContentListOptions,
-  ContentUpdateOptions
+  ContentUpdateOptions,
+  KnowledgeBaseContent,
+  knowledgeBaseService
 } from '@/lib/knowledgeBaseService'
 import { toast } from 'sonner'
 
@@ -45,7 +45,7 @@ export interface UseKnowledgeBaseManagerReturn {
  * Provides operations for listing, updating, and deleting content
  */
 export const useKnowledgeBaseManager = (
-  options: UseKnowledgeBaseManagerOptions = {}
+  options: UseKnowledgeBaseManagerOptions
 ): UseKnowledgeBaseManagerReturn => {
   const { autoLoad = false, baseUrl, dbId } = options
 
@@ -98,8 +98,8 @@ export const useKnowledgeBaseManager = (
   const getContent = useCallback(
     async (contentId: string, dbId?: string): Promise<KnowledgeBaseContent | null> => {
       try {
-        const content = await knowledgeBaseService.getContentById(contentId, dbId, baseUrl)
-        return content
+
+        return await knowledgeBaseService.getContentById(contentId, dbId, baseUrl)
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to get content'
         toast.error(errorMessage)
