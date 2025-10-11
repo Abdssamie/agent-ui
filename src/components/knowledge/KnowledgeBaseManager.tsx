@@ -165,6 +165,7 @@ export const KnowledgeBaseManager = ({
       try {
         const result = await uploadFileToKnowledge(attachment, {
           baseUrl,
+          dbId: dbId || undefined,
           onProgress: (progress) => {
             setUploadingFiles(prev => {
               const updated = new Map(prev)
@@ -178,10 +179,10 @@ export const KnowledgeBaseManager = ({
               return updated
             })
           },
-          onSuccess: (knowledgeId) => {
+          onSuccess: () => {
             // Success notification is handled by the service
           },
-          onError: (error) => {
+          onError: () => {
             // Error notification is handled by the service
           }
         })

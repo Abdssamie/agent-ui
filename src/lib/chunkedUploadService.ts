@@ -16,6 +16,7 @@ import { parseError, showErrorNotification } from './errorHandling'
 
 export interface ChunkedUploadOptions {
   baseUrl?: string
+  dbId?: string
   onProgress?: (progress: number) => void
   onChunkComplete?: (chunkIndex: number, totalChunks: number) => void
   onSuccess?: (knowledgeId: string) => void
@@ -40,6 +41,7 @@ export async function uploadFileWithChunking(
 ): Promise<ChunkedUploadResult> {
   const {
     baseUrl,
+    dbId,
     onProgress,
     onChunkComplete,
     onSuccess,
@@ -63,6 +65,7 @@ export async function uploadFileWithChunking(
       // Use regular upload for small files
       return await uploadFileRegular(fileToUpload, {
         baseUrl,
+        dbId,
         onProgress: (progress) => {
           // Map progress from 10-100 if compression was done, otherwise 0-100
           const mappedProgress = enableCompression ? 10 + (progress * 0.9) : progress
@@ -77,6 +80,7 @@ export async function uploadFileWithChunking(
     // Use chunked upload for large files
     return await uploadFileChunked(fileToUpload, {
       baseUrl,
+      dbId,
       onProgress: (progress) => {
         // Map progress from 10-100 if compression was done, otherwise 0-100
         const mappedProgress = enableCompression ? 10 + (progress * 0.9) : progress
@@ -107,13 +111,14 @@ async function uploadFileRegular(
   file: File,
   options: {
     baseUrl?: string
+    dbId?: string
     onProgress?: (progress: number) => void
     onSuccess?: (knowledgeId: string) => void
     onError?: (error: string) => void
     metadata?: Record<string, any>
   }
 ): Promise<ChunkedUploadResult> {
-  const { baseUrl, onProgress, onSuccess, onError, metadata = {} } = options
+  const { baseUrl, dbId, onProgress, onSuccess, onError, metadata = {} } = options
 
   try {
     onProgress?.(0)
@@ -122,6 +127,7 @@ async function uploadFileRegular(
       file,
       name: file.name,
       description: `Uploaded file: ${file.name}`,
+      db_id: dbId,
       metadata: {
         filename: file.name,
         source: 'chat-upload',
@@ -190,6 +196,7 @@ async function uploadFileChunked(
   file: File,
   options: {
     baseUrl?: string
+    dbId?: string
     onProgress?: (progress: number) => void
     onChunkComplete?: (chunkIndex: number, totalChunks: number) => void
     onSuccess?: (knowledgeId: string) => void
@@ -197,7 +204,7 @@ async function uploadFileChunked(
     metadata?: Record<string, any>
   }
 ): Promise<ChunkedUploadResult> {
-  const { baseUrl, onProgress, onChunkComplete, onSuccess, onError, metadata = {} } = options
+  const { baseUrl, dbId, onProgress, onChunkComplete, onSuccess, onError, metadata = {} } = options
 
   try {
     // Split file into chunks
@@ -217,6 +224,7 @@ async function uploadFileChunked(
       file,
       name: file.name,
       description: `Uploaded file: ${file.name} (chunked)`,
+      db_id: dbId,
       metadata: {
         filename: file.name,
         source: 'chat-upload',
@@ -293,6 +301,7 @@ export async function uploadFilesWithChunking(
   attachments: FileAttachment[],
   options: {
     baseUrl?: string
+    dbId?: string
     onFileProgress?: (attachmentId: string, progress: number) => void
     onFileSuccess?: (attachmentId: string, knowledgeId: string) => void
     onFileError?: (attachmentId: string, error: string) => void
@@ -304,6 +313,7 @@ export async function uploadFilesWithChunking(
 ): Promise<Map<string, ChunkedUploadResult>> {
   const {
     baseUrl,
+    dbId,
     onFileProgress,
     onFileSuccess,
     onFileError,
@@ -326,6 +336,7 @@ export async function uploadFilesWithChunking(
 
       const uploadPromise = uploadFileWithChunking(attachment, {
         baseUrl,
+        dbId,
         onProgress: (progress) => onFileProgress?.(attachment.id, progress),
         onSuccess: (knowledgeId) => onFileSuccess?.(attachment.id, knowledgeId),
         onError: (error) => onFileError?.(attachment.id, error),

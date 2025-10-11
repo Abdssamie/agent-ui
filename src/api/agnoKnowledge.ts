@@ -1,12 +1,11 @@
 import { toast } from 'sonner'
 import {
-    ListContentParams,
-    ListContentResponse,
-    UploadContentParams,
-    UploadContentResponse,
-    AgnoErrorResponse
+  AgnoErrorResponse,
+  ListContentParams,
+  ListContentResponse,
+  UploadContentParams,
+  UploadContentResponse
 } from '@/types/agnoKnowledge'
-import { FileHandlingError, FileErrorType } from '@/lib/errorHandling'
 
 // Base configuration
 const DEFAULT_RETRY_ATTEMPTS = 3
@@ -222,9 +221,8 @@ export const listContentAPI = async (
         const endpoint = `/knowledge/content${queryString}`
 
         const response = await makeRequest(endpoint, { method: 'GET' }, baseUrl)
-        const data: ListContentResponse = await response.json()
 
-        return data
+        return await response.json()
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Failed to list content'
         toast.error(`Error listing content: ${errorMessage}`)
@@ -279,9 +277,9 @@ export const uploadContentAPI = async (
         }
 
         const response = await makeFormDataRequest(endpoint, formData, baseUrl)
-        const data: UploadContentResponse = await response.json()
 
-        return data
+
+        return await response.json()
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Failed to upload content'
         toast.error(`Error uploading content: ${errorMessage}`)

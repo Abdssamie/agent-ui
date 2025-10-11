@@ -12,6 +12,7 @@ import {
 
 export interface UploadOptions {
   baseUrl?: string
+  dbId?: string
   onProgress?: (progress: number) => void
   onSuccess?: (knowledgeId: string) => void
   onError?: (error: string) => void
@@ -33,7 +34,7 @@ export const uploadFileToKnowledge = async (
   attachment: FileAttachment,
   options: UploadOptions = {}
 ): Promise<UploadResult> => {
-  const { baseUrl, onProgress, onSuccess, onError, metadata = {} } = options
+  const { baseUrl, dbId, onProgress, onSuccess, onError, metadata = {} } = options
   let progressInterval: NodeJS.Timeout | null = null
 
   try {
@@ -45,6 +46,7 @@ export const uploadFileToKnowledge = async (
       file: attachment.file,
       name: attachment.file.name,
       description: `Uploaded file: ${attachment.file.name}`,
+      db_id: dbId,
       metadata: {
         filename: attachment.file.name,
         source: 'chat-upload',
@@ -135,6 +137,7 @@ export const uploadFilesToKnowledge = async (
   attachments: FileAttachment[],
   options: {
     baseUrl?: string
+    dbId?: string
     onFileProgress?: (attachmentId: string, progress: number) => void
     onFileSuccess?: (attachmentId: string, knowledgeId: string) => void
     onFileError?: (attachmentId: string, error: string) => void
@@ -144,6 +147,7 @@ export const uploadFilesToKnowledge = async (
 ): Promise<Map<string, UploadResult>> => {
   const {
     baseUrl,
+    dbId,
     onFileProgress,
     onFileSuccess,
     onFileError,
@@ -157,6 +161,7 @@ export const uploadFilesToKnowledge = async (
   for (const attachment of attachments) {
     const result = await uploadFileToKnowledge(attachment, {
       baseUrl,
+      dbId,
       onProgress: (progress) => onFileProgress?.(attachment.id, progress),
       onSuccess: (knowledgeId) => onFileSuccess?.(attachment.id, knowledgeId),
       onError: (error) => onFileError?.(attachment.id, error),
