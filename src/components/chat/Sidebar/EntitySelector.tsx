@@ -16,6 +16,7 @@ import useChatActions from '@/hooks/useChatActions'
 
 export function EntitySelector() {
   const { mode, agents, teams, setMessages, setSelectedModel } = useStore()
+  const [, setView] = useQueryState('view')
 
   const { focusChatInput } = useChatActions()
   const [agentId, setAgentId] = useQueryState('agent', {
@@ -43,6 +44,7 @@ export function EntitySelector() {
         if (entity.model?.model) {
           focusChatInput()
         }
+        setView('none')
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

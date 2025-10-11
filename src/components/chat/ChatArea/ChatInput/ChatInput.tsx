@@ -18,7 +18,7 @@ const ChatInput = () => {
   const { handleStreamResponse } = useAIChatStreamHandler()
   const [selectedAgent] = useQueryState('agent')
   const [teamId] = useQueryState('team')
-  const [view, setView] = useQueryState('view')
+  const [, setView] = useQueryState('view')
   const [inputMessage, setInputMessage] = useState('')
   const isStreaming = useStore((state) => state.isStreaming)
 

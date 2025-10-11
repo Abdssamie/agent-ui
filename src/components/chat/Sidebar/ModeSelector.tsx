@@ -18,11 +18,14 @@ export function ModeSelector() {
   const [, setAgentId] = useQueryState('agent')
   const [, setTeamId] = useQueryState('team')
   const [, setSessionId] = useQueryState('session')
+  const [, setView] = useQueryState('view')
 
   const handleModeChange = (newMode: 'agent' | 'team') => {
     if (newMode === mode) return
 
     setMode(newMode)
+
+    setView('none')
 
     setAgentId(null)
     setTeamId(null)
