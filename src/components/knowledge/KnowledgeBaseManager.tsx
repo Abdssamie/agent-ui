@@ -276,7 +276,7 @@ export const KnowledgeBaseManager = ({
   return (
     <div className="flex flex-col h-full bg-background">
       {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b bg-card/50">
+      <div className="flex items-center justify-between px-6 py-4 border-b border-primary/15 bg-accent/50">
         <div className="flex items-center gap-3">
           <Button
             variant="ghost"
@@ -287,7 +287,7 @@ export const KnowledgeBaseManager = ({
             <Icon type="arrow-down" size="xs" className="rotate-90" />
           </Button>
           <div>
-            <h2 className="text-lg font-semibold">Knowledge Base</h2>
+            <h2 className="text-xs font-medium uppercase text-primary">Knowledge Base</h2>
             <p className="text-xs text-muted-foreground">
               {pagination.totalCount} {pagination.totalCount === 1 ? 'item' : 'items'}
             </p>
@@ -299,7 +299,7 @@ export const KnowledgeBaseManager = ({
             size="sm"
             onClick={() => loadContents()}
             disabled={isLoading}
-            className="gap-2"
+            className="gap-2 rounded-xl border border-primary/15 bg-accent text-xs font-medium uppercase text-muted hover:bg-accent/80"
           >
             <Icon type="refresh" size="xs" />
             Refresh
@@ -310,6 +310,7 @@ export const KnowledgeBaseManager = ({
               size="sm"
               onClick={handleBatchDelete}
               disabled={isLoading}
+              className="rounded-xl text-xs font-medium uppercase"
             >
               Delete {selectedIds.size}
             </Button>
@@ -320,7 +321,7 @@ export const KnowledgeBaseManager = ({
               size="sm"
               onClick={() => setDeleteAllDialogOpen(true)}
               disabled={isLoading}
-              className="text-destructive hover:text-destructive"
+              className="rounded-xl border-primary/15 text-xs font-medium uppercase text-destructive hover:text-destructive"
             >
               Clear All
             </Button>
@@ -331,7 +332,7 @@ export const KnowledgeBaseManager = ({
       <div className="flex-1 overflow-auto">
         <div className="max-w-6xl mx-auto p-6 space-y-6">
           {/* Compact Upload Zone */}
-          <div className="bg-card rounded-lg border p-4">
+          <div className="bg-accent rounded-xl border border-primary/15 p-4">
             <KnowledgeUploadZone
               onFilesSelected={handleFilesSelected}
               disabled={isLoading}
@@ -340,7 +341,7 @@ export const KnowledgeBaseManager = ({
 
           {/* Upload Progress */}
           {uploadingFiles.size > 0 && (
-            <div className="bg-card rounded-lg border p-4">
+            <div className="bg-accent rounded-xl border border-primary/15 p-4">
               <UploadProgressList uploads={uploadingFiles} />
             </div>
           )}
@@ -359,7 +360,7 @@ export const KnowledgeBaseManager = ({
                 placeholder="Search by name..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
+                className="pl-9 rounded-xl border-primary/15 bg-accent text-xs font-medium text-muted"
               />
             </div>
           </div>
@@ -382,7 +383,7 @@ export const KnowledgeBaseManager = ({
             </div>
           ) : (
             <>
-              <div className="bg-card rounded-lg border overflow-hidden">
+              <div className="bg-accent rounded-xl border border-primary/15 overflow-hidden">
                 <Table>
                   <TableHeader>
                     <TableRow className="hover:bg-transparent border-b">
@@ -517,14 +518,14 @@ export const KnowledgeBaseManager = ({
           {selectedContent && (
             <div className="space-y-6">
               {/* Status Banner */}
-              <div className="flex items-center justify-between p-4 bg-accent/50 rounded-lg">
+              <div className="flex items-center justify-between p-4 bg-accent rounded-xl border border-primary/15">
                 <div className="flex items-center gap-3">
-                  <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+                  <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
                     <Icon type="file" size="md" className="text-primary" />
                   </div>
                   <div>
-                    <p className="font-medium">{selectedContent.type || 'Document'}</p>
-                    <p className="text-sm text-muted-foreground">{formatSize(selectedContent.size)}</p>
+                    <p className="text-xs font-medium uppercase text-primary">{selectedContent.type || 'Document'}</p>
+                    <p className="text-xs text-muted-foreground">{formatSize(selectedContent.size)}</p>
                   </div>
                 </div>
                 {getStatusBadge(selectedContent.status)}
@@ -534,8 +535,8 @@ export const KnowledgeBaseManager = ({
               <div className="space-y-4">
                 {selectedContent.description && (
                   <div>
-                    <h3 className="text-sm font-semibold mb-2">Description</h3>
-                    <p className="text-sm text-muted-foreground leading-relaxed">
+                    <h3 className="text-xs font-medium uppercase text-primary mb-2">Description</h3>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
                       {selectedContent.description}
                     </p>
                   </div>
@@ -543,19 +544,19 @@ export const KnowledgeBaseManager = ({
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <h3 className="text-sm font-semibold mb-1">Created</h3>
-                    <p className="text-sm text-muted-foreground">{formatDate(selectedContent.createdAt)}</p>
+                    <h3 className="text-xs font-medium uppercase text-primary mb-1">Created</h3>
+                    <p className="text-xs text-muted-foreground">{formatDate(selectedContent.createdAt)}</p>
                   </div>
                   <div>
-                    <h3 className="text-sm font-semibold mb-1">Last Updated</h3>
-                    <p className="text-sm text-muted-foreground">{formatDate(selectedContent.updatedAt)}</p>
+                    <h3 className="text-xs font-medium uppercase text-primary mb-1">Last Updated</h3>
+                    <p className="text-xs text-muted-foreground">{formatDate(selectedContent.updatedAt)}</p>
                   </div>
                 </div>
 
                 {selectedContent.accessCount !== undefined && selectedContent.accessCount > 0 && (
                   <div>
-                    <h3 className="text-sm font-semibold mb-1">Usage</h3>
-                    <p className="text-sm text-muted-foreground">
+                    <h3 className="text-xs font-medium uppercase text-primary mb-1">Usage</h3>
+                    <p className="text-xs text-muted-foreground">
                       Referenced {selectedContent.accessCount} {selectedContent.accessCount === 1 ? 'time' : 'times'}
                     </p>
                   </div>
@@ -563,18 +564,18 @@ export const KnowledgeBaseManager = ({
 
                 {selectedContent.statusMessage && (
                   <div>
-                    <h3 className="text-sm font-semibold mb-1">Status Message</h3>
-                    <p className="text-sm text-muted-foreground">{selectedContent.statusMessage}</p>
+                    <h3 className="text-xs font-medium uppercase text-primary mb-1">Status Message</h3>
+                    <p className="text-xs text-muted-foreground">{selectedContent.statusMessage}</p>
                   </div>
                 )}
               </div>
 
               {/* Info Banner */}
-              <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
+              <div className="bg-primary/5 border border-primary/15 rounded-xl p-4">
                 <div className="flex gap-3">
                   <Icon type="info" size="sm" className="text-primary mt-0.5 flex-shrink-0" />
-                  <div className="text-sm text-muted-foreground">
-                    <p className="font-medium text-foreground mb-1">Persistent Storage</p>
+                  <div className="text-xs text-muted-foreground">
+                    <p className="text-xs font-medium uppercase text-primary mb-1">Persistent Storage</p>
                     <p>
                       This content is permanently stored and available across all sessions. 
                       AI agents can search and reference it in any conversation.
@@ -589,7 +590,7 @@ export const KnowledgeBaseManager = ({
                   variant="outline"
                   onClick={() => handleRefresh(selectedContent.id)}
                   disabled={isLoading}
-                  className="gap-2"
+                  className="gap-2 rounded-xl border-primary/15 text-xs font-medium uppercase"
                 >
                   <Icon type="refresh" size="xs" />
                   Refresh
@@ -601,7 +602,7 @@ export const KnowledgeBaseManager = ({
                     handleDeleteClick(selectedContent.id)
                   }}
                   disabled={isLoading}
-                  className="gap-2"
+                  className="gap-2 rounded-xl text-xs font-medium uppercase"
                 >
                   <Icon type="trash" size="xs" />
                   Delete

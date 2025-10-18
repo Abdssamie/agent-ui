@@ -56,7 +56,7 @@ const CircularProgress = ({ progress }: { progress: number }) => {
       </svg>
       {/* Percentage text */}
       <div className="absolute inset-0 flex items-center justify-center">
-        <span className="text-[10px] font-semibold text-primary">
+        <span className="text-[10px] font-medium text-primary">
           {progress}%
         </span>
       </div>
@@ -122,7 +122,7 @@ export const UploadProgressList = ({
         <div
           key={upload.id}
           className={cn(
-            "border rounded-lg p-3 bg-card transition-all duration-500",
+            "border border-primary/15 rounded-xl p-3 bg-accent transition-all duration-500",
             upload.isRemoving && "opacity-0 scale-95"
           )}
         >
@@ -145,8 +145,8 @@ export const UploadProgressList = ({
 
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between gap-2 mb-1">
-                <p className="text-sm font-medium truncate text-primary">{upload.name}</p>
-                <span className="text-xs font-medium flex-shrink-0">
+                <p className="text-xs font-medium truncate text-primary">{upload.name}</p>
+                <span className="text-xs font-medium uppercase flex-shrink-0">
                   {upload.status === 'uploading' && (
                     <span className="text-primary">Uploading...</span>
                   )}
@@ -160,9 +160,9 @@ export const UploadProgressList = ({
               </div>
 
               {upload.status === 'uploading' && (
-                <div className="w-full bg-muted rounded-full h-1.5">
+                <div className="w-full bg-accent rounded-xl h-1.5">
                   <div
-                    className="bg-primary h-1.5 rounded-full transition-all duration-300"
+                    className="bg-primary h-1.5 rounded-xl transition-all duration-300"
                     style={{ width: `${upload.progress}%` }}
                   />
                 </div>

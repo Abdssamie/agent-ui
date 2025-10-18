@@ -93,9 +93,9 @@ export const KnowledgeUploadZone = ({
   return (
     <div
       className={cn(
-        'rounded-lg p-6 text-center transition-colors cursor-pointer',
+        'rounded-xl border border-primary/15 p-6 text-center transition-colors cursor-pointer',
         isDragging && !disabled && 'bg-primary/5',
-        !isDragging && 'hover:bg-accent/5',
+        !isDragging && 'hover:bg-accent/50',
         disabled && 'opacity-50 cursor-not-allowed',
         className
       )}
@@ -107,8 +107,8 @@ export const KnowledgeUploadZone = ({
     >
       <div className="flex flex-col items-center gap-3">
         <div className={cn(
-          'w-12 h-12 rounded-full flex items-center justify-center',
-          isDragging && !disabled ? 'bg-primary/10' : 'bg-muted'
+          'w-12 h-12 rounded-xl flex items-center justify-center',
+          isDragging && !disabled ? 'bg-primary/10' : 'bg-accent'
         )}>
           <Icon 
             type="upload" 
@@ -120,7 +120,7 @@ export const KnowledgeUploadZone = ({
         </div>
 
         <div className="space-y-1">
-          <p className="text-sm font-medium">
+          <p className="text-xs font-medium uppercase text-primary">
             {isDragging ? 'Drop files here' : 'Upload to Knowledge Base'}
           </p>
           <p className="text-xs text-muted-foreground">
