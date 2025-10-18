@@ -45,7 +45,6 @@ const Images = ({ images, size = 'normal' }: ImagesProps) => {
             "group relative overflow-hidden rounded-lg",
             size === 'small' ? 'h-16 w-16' : ''
           )}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
             <Image
               src={imageSrc}
               alt={image.revised_prompt || 'Image'}

@@ -65,7 +65,7 @@ export const createOPCVoiceCommands = (actions: {
       trigger: /(?:hey opc|okay opc|opc)?,?\s*(?:generate|find|get|search for)\s+leads?\s+(?:for|about)?\s*(.+)/i,
       action: (match) => {
         const query = match?.[1]?.trim() || 'my business'
-        actions.onGenerateLeads(query)
+        actions.onGenerateLeads!(query)
       },
       description: 'Generate leads for [topic]'
     })
@@ -76,7 +76,7 @@ export const createOPCVoiceCommands = (actions: {
       trigger: /(?:hey opc|okay opc|opc)?,?\s*(?:create|write|generate)\s+(?:content|post|article)\s+(?:about|on|for)?\s*(.+)/i,
       action: (match) => {
         const topic = match?.[1]?.trim() || 'my business'
-        actions.onCreateContent(topic)
+        actions.onCreateContent!(topic)
       },
       description: 'Create content about [topic]'
     })
@@ -87,7 +87,7 @@ export const createOPCVoiceCommands = (actions: {
       trigger: /(?:hey opc|okay opc|opc)?,?\s*(?:research|find information about|tell me about)\s+(.+)/i,
       action: (match) => {
         const topic = match?.[1]?.trim() || ''
-        actions.onResearch(topic)
+        actions.onResearch!(topic)
       },
       description: 'Research [topic]'
     })
@@ -96,7 +96,7 @@ export const createOPCVoiceCommands = (actions: {
   if (actions.onNewChat) {
     commands.push({
       trigger: /(?:hey opc|okay opc|opc)?,?\s*(?:new chat|start new conversation|clear conversation)/i,
-      action: () => actions.onNewChat(),
+      action: () => actions.onNewChat!(),
       description: 'Start a new chat'
     })
   }
@@ -104,7 +104,7 @@ export const createOPCVoiceCommands = (actions: {
   if (actions.onClearChat) {
     commands.push({
       trigger: /(?:hey opc|okay opc|opc)?,?\s*(?:clear chat|delete messages|reset)/i,
-      action: () => actions.onClearChat(),
+      action: () => actions.onClearChat!(),
       description: 'Clear the current chat'
     })
   }

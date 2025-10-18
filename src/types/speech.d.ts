@@ -53,8 +53,8 @@ interface SpeechRecognitionConstructor {
   new (): SpeechRecognition
 }
 
-declare var SpeechRecognition: SpeechRecognitionConstructor
-declare var webkitSpeechRecognition: SpeechRecognitionConstructor
+declare let SpeechRecognition: SpeechRecognitionConstructor
+declare let webkitSpeechRecognition: SpeechRecognitionConstructor
 
 interface Window {
   SpeechRecognition: SpeechRecognitionConstructor
