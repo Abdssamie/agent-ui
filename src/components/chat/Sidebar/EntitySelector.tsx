@@ -44,7 +44,6 @@ export function EntitySelector() {
         if (entity.model?.model) {
           focusChatInput()
         }
-        setView('none')
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -56,6 +55,8 @@ export function EntitySelector() {
 
     setSelectedModel(selectedEntity?.model?.provider || '')
 
+    setView('none')
+    
     if (mode === 'team') {
       setTeamId(newValue)
       setAgentId(null)
