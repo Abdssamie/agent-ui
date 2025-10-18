@@ -7,3 +7,7 @@ export type {
 
 export { useImageAttachment } from './useImageAttachment'
 export type { UseImageAttachmentReturn } from './useImageAttachment'
+
+export { useVoiceInput } from './useVoiceInput'
+export { useVoiceCommands, createOPCVoiceCommands } from './useVoiceCommands'
+export type { VoiceCommand } from './useVoiceCommands'

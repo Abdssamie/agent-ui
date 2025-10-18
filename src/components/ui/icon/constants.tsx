@@ -45,7 +45,9 @@ import {
   Search,
   Loader,
   Info,
-  AlertCircle
+  AlertCircle,
+  Mic,
+  MicOff
 } from 'lucide-react'
 
 import { PlusIcon } from '@radix-ui/react-icons'
@@ -95,5 +97,7 @@ export const ICONS: IconTypeMap = {
   loader: Loader,
   'alert-circle': AlertCircle,
   search: Search,
-  info: Info
+  info: Info,
+  mic: Mic,
+  'mic-off': MicOff
 }
