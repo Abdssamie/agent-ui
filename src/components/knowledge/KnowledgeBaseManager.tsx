@@ -144,8 +144,33 @@ export const KnowledgeBaseManager = ({
       validation.warnings.forEach(warning => toast.warning(warning))
     }
 
-    // Process each file
+    // Check for duplicates
+    const duplicates: string[] = []
+    const filesToUpload: File[] = []
+    
     for (const file of files) {
+      const isDuplicate = contents.some(content => content.name === file.name)
+      if (isDuplicate) {
+        duplicates.push(file.name)
+      } else {
+        filesToUpload.push(file)
+      }
+    }
+
+    // Show duplicate warnings
+    if (duplicates.length > 0) {
+      duplicates.forEach(name => {
+        toast.error(`File "${name}" already exists in knowledge base`)
+      })
+    }
+
+    // If no files to upload, return early
+    if (filesToUpload.length === 0) {
+      return
+    }
+
+    // Process each file
+    for (const file of filesToUpload) {
       const attachmentId = generateFileId(file)
       const attachment: FileAttachment = {
         id: attachmentId,
