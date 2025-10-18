@@ -63,6 +63,8 @@ export const useKnowledgeBaseManager = (
 
   // Track polling interval
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  // Track if initial load has been triggered
+  const hasLoadedRef = useRef(false)
 
   /**
    * Load contents from knowledge base
@@ -319,7 +321,7 @@ export const useKnowledgeBaseManager = (
    */
   const pollProcessingDocuments = useCallback(async () => {
     const processingDocs = contents.filter(c => c.status === 'processing')
-    
+
     if (processingDocs.length === 0) {
       // No processing documents, stop polling
       if (pollingIntervalRef.current) {
@@ -333,12 +335,12 @@ export const useKnowledgeBaseManager = (
     for (const doc of processingDocs) {
       try {
         const status = await knowledgeBaseService.getContentStatus(doc.id, dbId, baseUrl)
-        
+
         // Update if status changed
         if (status.status !== doc.status) {
-          setContents(prev => 
-            prev.map(content => 
-              content.id === doc.id 
+          setContents(prev =>
+            prev.map(content =>
+              content.id === doc.id
                 ? { ...content, status: status.status, statusMessage: status.status_message }
                 : content
             )
@@ -359,7 +361,8 @@ export const useKnowledgeBaseManager = (
 
   // Auto-load on mount if enabled
   useEffect(() => {
-    if (autoLoad) {
+    if (autoLoad && !hasLoadedRef.current) {
+      hasLoadedRef.current = true
       loadContents()
     }
   }, [autoLoad, loadContents])
@@ -367,7 +370,7 @@ export const useKnowledgeBaseManager = (
   // Set up polling for processing documents
   useEffect(() => {
     const hasProcessingDocs = contents.some(c => c.status === 'processing')
-    
+
     if (hasProcessingDocs && !pollingIntervalRef.current) {
       // Start polling every 3 seconds
       pollingIntervalRef.current = setInterval(() => {

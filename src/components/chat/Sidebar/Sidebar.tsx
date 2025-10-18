@@ -237,12 +237,17 @@ const Sidebar = () => {
   const [isMounted, setIsMounted] = useState(false)
   const [agentId] = useQueryState('agent')
   const [teamId] = useQueryState('team')
+  const initializedEndpointRef = React.useRef<string | null>(null)
 
   useEffect(() => {
     setIsMounted(true)
 
-    if (hydrated) initialize()
-  }, [selectedEndpoint, initialize, hydrated, mode])
+    // Only initialize if hydrated and endpoint has changed
+    if (hydrated && selectedEndpoint !== initializedEndpointRef.current) {
+      initializedEndpointRef.current = selectedEndpoint
+      initialize()
+    }
+  }, [selectedEndpoint, hydrated, mode, initialize])
 
   const handleNewChat = () => {
     clearChat()

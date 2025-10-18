@@ -59,6 +59,7 @@ const Sessions = () => {
 
   const { getSessions, getSession } = useSessionLoader()
   const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout>>(null)
+  const loadedSessionRef = useRef<string | null>(null)
 
   const handleScroll = () => {
     setIsScrolling(true)
@@ -82,11 +83,23 @@ const Sessions = () => {
   }, [])
 
   useEffect(() => {
+    // This effect only handles loading sessions from URL on initial mount or page refresh
+    // Session clicks are handled directly in SessionItem to avoid duplicate requests
     if (hydrated && sessionId && selectedEndpoint && (agentId || teamId)) {
-      const entityType = agentId ? 'agent' : 'team'
-      getSession({ entityType, agentId, teamId, dbId }, sessionId)
+      // Only load if this is a different session than the last one loaded
+      // AND if we haven't loaded any session yet (initial mount/refresh scenario)
+      if (loadedSessionRef.current !== sessionId && loadedSessionRef.current === null) {
+        loadedSessionRef.current = sessionId
+        const entityType = agentId ? 'agent' : 'team'
+        getSession({ entityType, agentId, teamId, dbId }, sessionId)
+      } else if (loadedSessionRef.current !== sessionId) {
+        // Just update the ref without loading (click handler already loaded it)
+        loadedSessionRef.current = sessionId
+      }
+    } else if (!sessionId) {
+      // Reset when there's no session
+      loadedSessionRef.current = null
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hydrated, sessionId, selectedEndpoint, agentId, teamId, dbId])
 
   useEffect(() => {
@@ -102,7 +115,6 @@ const Sessions = () => {
       teamId,
       dbId
     })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     selectedEndpoint,
     agentId,

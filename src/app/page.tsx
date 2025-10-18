@@ -10,6 +10,7 @@ function HomeContent() {
   const view = searchParams.get('view')
   const dbId = searchParams.get('db_id')
   const baseUrl = process.env.NEXT_PUBLIC_AGENTOS_URL || 'http://localhost:7777'
+  console.log("--------------\ntest-------------")
   
   return (
     <div className="flex h-screen bg-background/80">

@@ -1,21 +1,10 @@
 import { useCallback } from 'react'
 import { getSessionAPI, getAllSessionsAPI } from '@/api/os'
-import { useStore } from '../store'
+import { useStore } from '@/store'
 import { toast } from 'sonner'
-import { ChatMessage, ToolCall, ReasoningMessage, ChatEntry, RunResponse, UserMessage} from '@/types/os'
+import { ChatMessage, ToolCall, ReasoningMessage, RunResponse, UserMessage} from '@/types/os'
 import { getJsonMarkdown } from '@/lib/utils'
 
-interface SessionResponse {
-  session_id: string
-  agent_id: string
-  user_id: string | null
-  runs?: ChatEntry[]
-  memory: {
-    runs?: ChatEntry[]
-    chats?: ChatEntry[]
-  }
-  agent_data: Record<string, unknown>
-}
 
 interface LoaderArgs {
   entityType: 'agent' | 'team' | null
@@ -34,6 +23,8 @@ const useSessionLoader = () => {
     async ({ entityType, agentId, teamId, dbId }: LoaderArgs) => {
       const selectedId = entityType === 'agent' ? agentId : teamId
       if (!selectedEndpoint || !entityType || !selectedId || !dbId) return
+
+      console.log("Loading sessions list")
 
       try {
         setIsSessionsLoading(true)
@@ -77,6 +68,7 @@ const useSessionLoader = () => {
           sessionId,
           dbId
         )
+        console.log("Loading sessions")
         if (response) {
           if (Array.isArray(response)) {
             const messagesFor = response.flatMap((run) => {
@@ -161,12 +153,7 @@ const useSessionLoader = () => {
                     content: textContent
                   }
                 }
-                if (typeof newMessage.content !== 'string') {
-                  return {
-                    ...newMessage,
-                    content: getJsonMarkdown(newMessage.content)
-                  }
-                }
+
                 return newMessage
               }
             )

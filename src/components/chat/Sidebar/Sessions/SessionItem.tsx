@@ -14,7 +14,7 @@ import { truncateText, cn } from '@/lib/utils'
 type SessionItemProps = SessionEntry & {
   isSelected: boolean
   currentSessionId: string | null
-  onSessionClick: () => void
+  onSessionClick: () => void | undefined
 }
 const SessionItem = ({
   session_name: title,
@@ -36,6 +36,8 @@ const SessionItem = ({
 
   const handleGetSession = async () => {
     if (!(agentId || teamId || dbId)) return
+
+    console.log("handleGetSession triggered")
 
     onSessionClick()
     // Clear the view to show chat instead of knowledge base
