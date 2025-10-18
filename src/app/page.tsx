@@ -2,6 +2,7 @@
 import Sidebar from '@/components/chat/Sidebar/Sidebar'
 import { ChatArea } from '@/components/chat/ChatArea'
 import { KnowledgeBaseManager } from '@/components/knowledge'
+import { WorkflowManager } from '@/components/workflows'
 import { Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { ViewToolbar } from '@/components/chat/ViewToolbar';
@@ -49,6 +50,8 @@ function HomeContent() {
             <KnowledgeBaseManager baseUrl={baseUrl} dbId={dbId} />
           </div>
         )
+      case 'workflows':
+        return <WorkflowManager baseUrl={baseUrl} dbId={dbId} />
       case 'leads':
         return <PlaceholderView viewName="Leads" icon="user" />
       case 'content':

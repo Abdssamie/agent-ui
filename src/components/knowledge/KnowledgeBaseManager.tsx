@@ -329,7 +329,7 @@ export const KnowledgeBaseManager = ({
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto scrollbar-thick">
         <div className="max-w-6xl mx-auto p-6 space-y-6">
           {/* Compact Upload Zone */}
           <div className="bg-accent rounded-xl border border-primary/15 p-4">

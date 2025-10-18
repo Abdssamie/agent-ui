@@ -43,8 +43,8 @@ const DialogContent = React.forwardRef<
       )}
       {...props}
     >
-      <div className="scrollbar-none overflow-auto">{children}</div>
-      <DialogPrimitive.Close className="focus:ring-ring data-[state=open]:text-muted-foreground absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent">
+      <div className="overflow-auto  scrollbar-thick">{children}</div>
+      <DialogPrimitive.Close className="absolute right-4 top-4 rounded-lg bg-accent/80 p-2 opacity-90 ring-offset-background transition-all hover:bg-accent hover:opacity-100 hover:text-primary focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:text-muted-foreground">
         <Icon type="x" size="xs" />
         <span className="sr-only">Close</span>
       </DialogPrimitive.Close>

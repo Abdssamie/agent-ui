@@ -27,5 +27,11 @@ export const APIRoutes = {
     UpdateContent: (baseUrl: string, contentId: string) => `${baseUrl}/knowledge/content/${contentId}`,
     DeleteAllContent: (baseUrl: string) => `${baseUrl}/knowledge/content`,
     DeleteContentById: (baseUrl: string, contentId: string) => `${baseUrl}/knowledge/content/${contentId}`
+  },
+
+  // Workflow API Routes
+  Workflows: {
+    ListWorkflows: (baseUrl: string, db_id?: string | null) => `${baseUrl}/workflows`,
+    ExecuteWorkflow: (baseUrl: string, workflowId: string) => `${baseUrl}/workflows/${workflowId}/runs`
   }
 }

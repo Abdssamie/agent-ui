@@ -18,6 +18,11 @@ const views: ViewItem[] = [
         icon: 'references'
     },
     {
+        id: 'workflows',
+        label: 'Workflows',
+        icon: 'hammer'
+    },
+    {
         id: 'leads',
         label: 'Leads',
         icon: 'user'
@@ -53,7 +58,7 @@ const ViewToolbar = () => {
     }
 
     return (
-        <div className="absolute left-1/2 top-4 z-[9999] -translate-x-1/2">
+        <div className="absolute left-1/2 top-4 z-40 -translate-x-1/2">
             <div className="flex items-center gap-2 rounded-xl border border-primary/15 bg-background/95 p-2 backdrop-blur-sm">
                 {views.map((viewItem) => {
                     const isActive = view === viewItem.id

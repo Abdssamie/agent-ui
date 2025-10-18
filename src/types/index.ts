@@ -52,3 +52,13 @@ export type {
 
 // OS types
 export type * from './os'
+
+// Workflow types
+export type {
+  WorkflowSummary,
+  WorkflowExecutionInput,
+  WorkflowExecutionResponse,
+  WorkflowRunEvent,
+  WorkflowRunEventData,
+  WorkflowErrorResponse
+} from './workflow'
