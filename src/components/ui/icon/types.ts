@@ -48,8 +48,9 @@ export type IconType =
   | 'alert-circle'
   | 'search'
   | 'info'
-  | 'mic' 
+  | 'mic'
   | 'mic-off'
+  | 'copy'
 export interface IconProps {
   type: IconType
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'dot' | 'xxs' | 'default'

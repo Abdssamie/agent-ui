@@ -46,6 +46,7 @@ import {
   Loader,
   Info,
   AlertCircle,
+  Copy,
   Mic,
   MicOff
 } from 'lucide-react'
@@ -99,5 +100,6 @@ export const ICONS: IconTypeMap = {
   search: Search,
   info: Info,
   mic: Mic,
-  'mic-off': MicOff
+  'mic-off': MicOff,
+  copy: Copy
 }
