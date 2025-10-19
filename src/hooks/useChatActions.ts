@@ -15,6 +15,7 @@ const useChatActions = () => {
   const setMessages = useStore((state) => state.setMessages)
   const setIsEndpointActive = useStore((state) => state.setIsEndpointActive)
   const setIsEndpointLoading = useStore((state) => state.setIsEndpointLoading)
+  const setIsStreaming = useStore((state) => state.setIsStreaming)
   const setAgents = useStore((state) => state.setAgents)
   const setTeams = useStore((state) => state.setTeams)
   const setSelectedModel = useStore((state) => state.setSelectedModel)
@@ -56,6 +57,7 @@ const useChatActions = () => {
     setMessages([])
     setSessionId(null)
     setView(null) // Clear view to show chat instead of knowledge base
+    setIsStreaming(false) // Reset streaming state
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 

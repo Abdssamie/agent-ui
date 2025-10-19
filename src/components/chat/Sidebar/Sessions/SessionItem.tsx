@@ -33,6 +33,7 @@ const SessionItem = ({
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const { clearChat } = useChatActions();
+  const setIsStreaming = useStore((state) => state.setIsStreaming);
 
   const handleGetSession = async () => {
     if (!(agentId || teamId || dbId)) return
@@ -40,6 +41,8 @@ const SessionItem = ({
     onSessionClick()
     // Clear the view to show chat instead of knowledge base
     setView(null)
+    // Reset streaming state when switching sessions
+    setIsStreaming(false)
     await getSession(
       {
         entityType: mode,

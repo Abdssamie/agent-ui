@@ -13,7 +13,7 @@ import { useQueryState } from 'nuqs'
 import useChatActions from '@/hooks/useChatActions'
 
 export function ModeSelector() {
-  const { mode, setMode, setMessages, setSelectedModel } = useStore()
+  const { mode, setMode, setMessages, setSelectedModel, setIsStreaming } = useStore()
   const { clearChat } = useChatActions()
   const [, setAgentId] = useQueryState('agent')
   const [, setTeamId] = useQueryState('team')
@@ -32,6 +32,7 @@ export function ModeSelector() {
     setSelectedModel('')
     setMessages([])
     setSessionId(null)
+    setIsStreaming(false)
     clearChat()
   }
 

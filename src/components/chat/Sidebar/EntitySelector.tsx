@@ -15,7 +15,7 @@ import { useEffect } from 'react'
 import useChatActions from '@/hooks/useChatActions'
 
 export function EntitySelector() {
-  const { mode, agents, teams, setMessages, setSelectedModel } = useStore()
+  const { mode, agents, teams, setMessages, setSelectedModel, setIsStreaming } = useStore()
   const [, setView] = useQueryState('view')
 
   const { focusChatInput } = useChatActions()
@@ -67,6 +67,7 @@ export function EntitySelector() {
 
     setMessages([])
     setSessionId(null)
+    setIsStreaming(false)
 
     if (selectedEntity?.model?.provider) {
       focusChatInput()
