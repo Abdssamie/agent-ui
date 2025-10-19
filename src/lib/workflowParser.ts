@@ -86,6 +86,7 @@ export function buildWorkflowExecution(
   const errors: string[] = []
   let status: WorkflowExecution['status'] = 'running'
   let completedAt: number | undefined
+  let wasCancelled = false
 
   // Process events to build step states
   for (const event of events) {
@@ -147,14 +148,28 @@ export function buildWorkflowExecution(
         break
       }
 
-      case 'WorkflowCompleted': {
-        status = 'completed'
+      case 'WorkflowCancelled': {
+        wasCancelled = true
+        status = 'cancelled'
         completedAt = event.created_at
+        // Mark any running steps as cancelled
+        for (const step of steps.values()) {
+          if (step.status === 'running') {
+            step.status = 'cancelled'
+            step.completed_at = event.created_at
+            step.duration = step.started_at
+              ? event.created_at - step.started_at
+              : undefined
+          }
+        }
         break
       }
 
-      case 'WorkflowCancelled': {
-        status = 'cancelled'
+      case 'WorkflowCompleted': {
+        // Only set to completed if not already cancelled
+        if (!wasCancelled) {
+          status = 'completed'
+        }
         completedAt = event.created_at
         break
       }

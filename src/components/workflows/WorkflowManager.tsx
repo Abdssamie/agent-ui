@@ -25,6 +25,8 @@ export const WorkflowManager = ({ baseUrl, dbId }: WorkflowManagerProps) => {
   const [executionLogs, setExecutionLogs] = useState<string[]>([])
   const [executingWorkflowId, setExecutingWorkflowId] = useState<string | null>(null)
   const [currentRunId, setCurrentRunId] = useState<string | null>(null)
+  const [isCancelling, setIsCancelling] = useState(false)
+  const wasCancelledRef = useRef(false)
   const hasLoadedRef = useRef(false)
 
   const loadWorkflows = useCallback(async () => {
@@ -63,6 +65,7 @@ export const WorkflowManager = ({ baseUrl, dbId }: WorkflowManagerProps) => {
     setIsExecuting(true)
     setExecutingWorkflowId(selectedWorkflow.id)
     setCurrentRunId(null)
+    wasCancelledRef.current = false
     setExecutionLogs([`Starting workflow: ${selectedWorkflow.name}`])
 
     try {
@@ -91,12 +94,18 @@ export const WorkflowManager = ({ baseUrl, dbId }: WorkflowManagerProps) => {
         }
       )
       
-      setExecutionLogs(prev => [...prev, 'Workflow completed successfully'])
-      toast.success('Workflow executed successfully')
+      // Only show success if not cancelled
+      if (!wasCancelledRef.current) {
+        setExecutionLogs(prev => [...prev, 'Workflow completed successfully'])
+        toast.success('Workflow executed successfully')
+      }
     } catch (error) {
       console.error('Workflow execution error:', error)
-      setExecutionLogs(prev => [...prev, `Error: ${error instanceof Error ? error.message : 'Unknown error'}`])
-      toast.error('Workflow execution failed')
+      // Only show error if not cancelled
+      if (!wasCancelledRef.current) {
+        setExecutionLogs(prev => [...prev, `Error: ${error instanceof Error ? error.message : 'Unknown error'}`])
+        toast.error('Workflow execution failed')
+      }
     } finally {
       setIsExecuting(false)
       setExecutingWorkflowId(null)
@@ -109,6 +118,15 @@ export const WorkflowManager = ({ baseUrl, dbId }: WorkflowManagerProps) => {
       toast.error('Unable to cancel: workflow or run ID not available')
       return
     }
+
+    // Prevent multiple cancel requests
+    if (isCancelling) {
+      return
+    }
+
+    setIsCancelling(true)
+    wasCancelledRef.current = true
+    setExecutionLogs(prev => [...prev, 'Cancelling workflow...'])
 
     try {
       const success = await cancelWorkflowRunAPI(
@@ -126,6 +144,8 @@ export const WorkflowManager = ({ baseUrl, dbId }: WorkflowManagerProps) => {
     } catch (error) {
       console.error('Error cancelling workflow:', error)
       toast.error('Failed to cancel workflow')
+    } finally {
+      setIsCancelling(false)
     }
   }
 
@@ -244,6 +264,7 @@ export const WorkflowManager = ({ baseUrl, dbId }: WorkflowManagerProps) => {
         isExecuting={isExecuting}
         executionLogs={executionLogs}
         onCancel={handleCancel}
+        isCancelling={isCancelling}
       />
     </div>
   )

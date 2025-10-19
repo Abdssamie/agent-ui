@@ -29,6 +29,8 @@ function getStatusIcon(status: WorkflowStep['status']) {
       return <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
     case 'error':
       return <XCircle className="h-5 w-5 text-red-500" />
+    case 'cancelled':
+      return <AlertCircle className="h-5 w-5 text-orange-500" />
     case 'pending':
       return <Circle className="h-5 w-5 text-muted-foreground" />
   }
@@ -42,6 +44,8 @@ function getStatusColor(status: WorkflowStep['status']) {
       return 'border-blue-500/30 bg-blue-500/5'
     case 'error':
       return 'border-red-500/30 bg-red-500/5'
+    case 'cancelled':
+      return 'border-orange-500/30 bg-orange-500/5'
     case 'pending':
       return 'border-primary/15 bg-accent'
   }
@@ -245,12 +249,18 @@ export function WorkflowVisualization({
           <div className="flex items-center gap-4 text-muted-foreground">
             <span>
               {execution.steps.filter((s) => s.status === 'completed').length}/
-              {execution.steps.length} completed
+              {execution.status === 'cancelled' ? '?' : execution.steps.length} completed
             </span>
             {execution.steps.filter((s) => s.status === 'error').length > 0 && (
               <span className="text-red-500">
                 {execution.steps.filter((s) => s.status === 'error').length}{' '}
                 failed
+              </span>
+            )}
+            {execution.steps.filter((s) => s.status === 'cancelled').length > 0 && (
+              <span className="text-orange-500">
+                {execution.steps.filter((s) => s.status === 'cancelled').length}{' '}
+                cancelled
               </span>
             )}
           </div>

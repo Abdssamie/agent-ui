@@ -190,7 +190,7 @@ export interface WorkflowStep {
   step_id: string
   step_name: string
   step_index: number | [number, number]
-  status: 'pending' | 'running' | 'completed' | 'error'
+  status: 'pending' | 'running' | 'completed' | 'error' | 'cancelled'
   started_at?: number
   completed_at?: number
   content?: any

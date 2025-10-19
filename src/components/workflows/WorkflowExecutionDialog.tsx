@@ -23,6 +23,7 @@ interface WorkflowExecutionDialogProps {
   isExecuting: boolean
   executionLogs: string[]
   onCancel?: () => void
+  isCancelling?: boolean
 }
 
 export const WorkflowExecutionDialog = ({
@@ -32,7 +33,8 @@ export const WorkflowExecutionDialog = ({
   onExecuteAction,
   isExecuting,
   executionLogs,
-  onCancel
+  onCancel,
+  isCancelling = false
 }: WorkflowExecutionDialogProps) => {
   const [message, setMessage] = useState('')
   const logsEndRef = useRef<HTMLDivElement>(null)
@@ -150,10 +152,20 @@ export const WorkflowExecutionDialog = ({
                       onClick={onCancel}
                       variant="outline"
                       size="sm"
+                      disabled={isCancelling}
                       className="rounded-xl border-primary/15 text-xs"
                     >
-                      <Icon type="x" size="xs" />
-                      <span className="text-xs font-medium uppercase">Cancel</span>
+                      {isCancelling ? (
+                        <>
+                          <Icon type="loader" size="xs" className="animate-spin" />
+                          <span className="text-xs font-medium uppercase">Cancelling...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Icon type="x" size="xs" />
+                          <span className="text-xs font-medium uppercase">Cancel</span>
+                        </>
+                      )}
                     </Button>
                   )}
                 </div>
