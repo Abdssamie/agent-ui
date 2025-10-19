@@ -183,4 +183,4 @@ const useChatActions = () => {
   }
 }
 
-export default useChatActions
+export default useChatActions;

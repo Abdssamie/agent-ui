@@ -1,7 +1,7 @@
 'use client'
 
-import ChatInput from './ChatInput'
-import MessageArea from './MessageArea'
+import ChatInput from './ChatInput';
+import MessageArea from './MessageArea';
 
 const ChatArea = () => {
   return (
@@ -14,4 +14,4 @@ const ChatArea = () => {
   )
 }
 
-export default ChatArea
+export default ChatArea;
