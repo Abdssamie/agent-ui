@@ -32,12 +32,10 @@ const SessionItem = ({
   const { selectedEndpoint, sessionsData, setSessionsData, mode } = useStore()
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
-  const { clearChat } = useChatActions()
+  const { clearChat } = useChatActions();
 
   const handleGetSession = async () => {
     if (!(agentId || teamId || dbId)) return
-
-    console.log("handleGetSession triggered")
 
     onSessionClick()
     // Clear the view to show chat instead of knowledge base
