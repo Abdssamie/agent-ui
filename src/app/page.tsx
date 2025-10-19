@@ -5,7 +5,7 @@ import { KnowledgeBaseManager } from '@/components/knowledge'
 import { WorkflowManager } from '@/components/workflows'
 import { Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { ViewToolbar } from '@/components/chat/ViewToolbar';
+import { ViewToolbar } from '@/components/ViewToolbar';
 import Icon from '@/components/ui/icon'
 
 // Placeholder component for test views
