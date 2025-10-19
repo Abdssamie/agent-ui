@@ -163,7 +163,7 @@ const Sessions = () => {
           (!sessionsData || sessionsData?.length === 0)) ? (
           <SessionBlankState />
         ) : (
-          <div className="flex flex-col gap-y-1 pr-1">
+          <div className="flex flex-col gap-y-1 pr-1 pb-10">
             {sessionsData?.map((entry, idx) => (
               <SessionItem
                 key={`${entry?.session_id}-${idx}`}
