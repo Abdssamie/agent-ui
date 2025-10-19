@@ -1,6 +1,5 @@
 'use client'
 import React, { useState, useRef, useEffect, useMemo } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
 import {
   Dialog,
   DialogContent,
@@ -10,11 +9,11 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import Icon from '@/components/ui/icon'
 import { WorkflowSummary } from '@/types/workflow'
 import { WorkflowVisualization } from './WorkflowVisualization'
 import { parseWorkflowExecution } from '@/lib/workflowParser'
+import { toast } from 'sonner'
 
 interface WorkflowExecutionDialogProps {
   open: boolean
@@ -36,20 +35,19 @@ export const WorkflowExecutionDialog = ({
   onCancel
 }: WorkflowExecutionDialogProps) => {
   const [message, setMessage] = useState('')
-  const [activeTab, setActiveTab] = useState('visualization')
   const logsEndRef = useRef<HTMLDivElement>(null)
 
   // Parse logs into workflow execution object
   const workflowExecution = useMemo(() => {
     if (executionLogs.length === 0) return null
-    
+
     const combinedLogs = executionLogs.join('\n')
     const result = parseWorkflowExecution(combinedLogs)
-    
+
     if (result) {
       console.log('✅ Parsed workflow:', result.workflow_name, 'with', result.steps.length, 'steps')
     }
-    
+
     return result
   }, [executionLogs])
 
@@ -69,6 +67,17 @@ export const WorkflowExecutionDialog = ({
       e.preventDefault()
       handleExecute()
     }
+  }
+
+  const handleCopyLogs = () => {
+    const logsText = executionLogs.join('\n')
+    navigator.clipboard.writeText(logsText)
+      .then(() => {
+        toast.success('Raw logs copied to clipboard')
+      })
+      .catch(() => {
+        toast.error('Failed to copy logs')
+      })
   }
 
 
@@ -126,82 +135,52 @@ export const WorkflowExecutionDialog = ({
                 <label className="text-xs font-medium uppercase text-muted">
                   Execution Results
                 </label>
-                {isExecuting && onCancel && (
+                <div className="flex items-center gap-2">
                   <Button
-                    onClick={onCancel}
+                    onClick={handleCopyLogs}
                     variant="outline"
                     size="sm"
                     className="rounded-xl border-primary/15 text-xs"
                   >
-                    <Icon type="x" size="xs" />
-                    <span className="text-xs font-medium uppercase">Cancel</span>
+                    <Icon type="copy" size="xs" />
+                    <span className="text-xs font-medium uppercase">Copy Raw Logs</span>
                   </Button>
-                )}
+                  {isExecuting && onCancel && (
+                    <Button
+                      onClick={onCancel}
+                      variant="outline"
+                      size="sm"
+                      className="rounded-xl border-primary/15 text-xs"
+                    >
+                      <Icon type="x" size="xs" />
+                      <span className="text-xs font-medium uppercase">Cancel</span>
+                    </Button>
+                  )}
+                </div>
               </div>
-              
+
               <div className="flex-1 overflow-hidden">
-                <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
-                  <TabsList className="grid w-full grid-cols-2 rounded-xl bg-accent border border-primary/15">
-                    <TabsTrigger 
-                      value="visualization" 
-                      className="rounded-xl text-xs font-medium uppercase data-[state=active]:bg-background data-[state=active]:text-primary"
-                    >
-                      Workflow View
-                    </TabsTrigger>
-                    <TabsTrigger 
-                      value="logs" 
-                      className="rounded-xl text-xs font-medium uppercase data-[state=active]:bg-background data-[state=active]:text-primary"
-                    >
-                      Raw Logs
-                    </TabsTrigger>
-                  </TabsList>
-                  
-                  <TabsContent value="visualization" className="flex-1 mt-3 overflow-hidden">
-                    <div className="h-full rounded-xl border border-primary/15 bg-accent/50 p-4 mx-2 overflow-y-auto">
-                      {workflowExecution ? (
-                        <WorkflowVisualization execution={workflowExecution} />
-                      ) : (
-                        <div className="flex items-center justify-center h-full">
-                          <div className="text-center space-y-2">
-                            <Icon type="loader" size="md" className="mx-auto text-muted" />
-                            <p className="text-xs text-muted-foreground">
-                              {isExecuting ? 'Parsing workflow execution...' : 'No workflow execution data available'}
-                            </p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </TabsContent>
-                  
-                  <TabsContent value="logs" className="flex-1 mt-3 overflow-hidden">
-                    <div className="h-full rounded-xl border border-primary/15 bg-accent/50 mx-2 overflow-hidden">
-                      <div className="h-full overflow-y-auto p-4 pr-8"> {/* Increased pr-8 for more scrollbar space */}
-                        <div className="space-y-2 font-mono text-xs mr-4"> {/* Added mr-4 for extra margin from scrollbar */}
-                          <AnimatePresence>
-                            {executionLogs.map((log, index) => (
-                              <motion.div
-                                key={index}
-                                initial={{ opacity: 0, x: -10 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                className="text-muted-foreground break-all"
-                              >
-                                {log}
-                              </motion.div>
-                            ))}
-                          </AnimatePresence>
-                          <div ref={logsEndRef} />
-                        </div>
+                <div className="h-full rounded-xl border border-primary/15 bg-accent/50 p-4 overflow-y-auto">
+                  {workflowExecution ? (
+                    <WorkflowVisualization execution={workflowExecution} />
+                  ) : (
+                    <div className="flex items-center justify-center h-full">
+                      <div className="text-center space-y-2">
+                        <Icon type="loader" size="md" className="mx-auto text-muted" />
+                        <p className="text-xs text-muted-foreground">
+                          {isExecuting ? 'Parsing workflow execution...' : 'No workflow execution data available'}
+                        </p>
                       </div>
                     </div>
-                  </TabsContent>
-                </Tabs>
+                  )}
+                </div>
               </div>
             </div>
           )}
 
           {/* Empty State */}
           {executionLogs.length === 0 && !isExecuting && (
-            <div className="flex-1 flex items-center justify-center rounded-xl border border-primary/15 bg-accent/50 mx-2 p-8">
+            <div className="flex-1 flex items-center justify-center rounded-xl border border-primary/15 bg-accent/50 p-8">
               <div className="text-center space-y-2">
                 <Icon type="info" size="md" className="mx-auto text-muted" />
                 <p className="text-xs text-muted-foreground">
