@@ -148,6 +148,8 @@ const UserMessage = memo(({ message }: MessageProps) => {
                       <Image
                         src={PDF_ICON_PATH}
                         alt="PDF Icon"
+                        width={20}
+                        height={20}
                         className="w-5 h-5"
                       />
                     ) : (

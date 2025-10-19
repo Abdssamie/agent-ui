@@ -188,6 +188,8 @@ const ImageThumbnail: React.FC<ImageThumbnailProps> = ({ attachment, onRemove })
                 <Image
                   src={attachment.preview}
                   alt={attachment.file.name}
+                  width={112}
+                  height={112}
                   className="w-full h-full object-cover"
                   loading="lazy"
                   onLoad={handleImageLoad}

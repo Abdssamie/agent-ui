@@ -48,6 +48,8 @@ const Images = ({ images, size = 'normal' }: ImagesProps) => {
             <Image
               src={imageSrc}
               alt={image.revised_prompt || 'Image'}
+              width={size === 'small' ? 64 : 400}
+              height={size === 'small' ? 64 : 300}
               className={cn(
                 'rounded-lg object-cover',
                 size === 'small' ? 'h-16 w-16' : 'w-full'
