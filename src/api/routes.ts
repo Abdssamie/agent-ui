@@ -33,5 +33,13 @@ export const APIRoutes = {
   Workflows: {
     ListWorkflows: (baseUrl: string, db_id?: string | null) => `${baseUrl}/workflows`,
     ExecuteWorkflow: (baseUrl: string, workflowId: string) => `${baseUrl}/workflows/${workflowId}/runs`
+  },
+
+  // Content API Routes (S3/Google Drive)
+  Content: {
+    ListContent: (baseUrl: string) => `${baseUrl}/content`,
+    UploadContent: (baseUrl: string) => `${baseUrl}/content/upload`,
+    DeleteContent: (baseUrl: string, contentId: string) => `${baseUrl}/content/${contentId}`,
+    GetContentUrl: (baseUrl: string, contentId: string) => `${baseUrl}/content/${contentId}/url`
   }
 }

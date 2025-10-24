@@ -3,6 +3,7 @@ import Sidebar from '@/components/chat/Sidebar/Sidebar'
 import { ChatArea } from '@/components/chat/ChatArea'
 import { KnowledgeBaseManager } from '@/components/knowledge'
 import { WorkflowManager } from '@/components/workflows'
+import { ContentManager } from '@/components/content'
 import { Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { ViewToolbar } from '@/components/ViewToolbar';
@@ -58,7 +59,7 @@ function HomeContent() {
       case 'leads':
         return <PlaceholderView viewName="Leads" icon="user" />
       case 'content':
-        return <PlaceholderView viewName="Content" icon="file" />
+        return <ContentManager />
       case 'analytics':
         return <PlaceholderView viewName="Analytics" icon="database" />
       case 'calendar':

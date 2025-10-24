@@ -51,6 +51,8 @@ export type IconType =
   | 'mic'
   | 'mic-off'
   | 'copy'
+  | 'image'
+  | 'video'
 export interface IconProps {
   type: IconType
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'dot' | 'xxs' | 'default'

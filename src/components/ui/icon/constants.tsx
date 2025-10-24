@@ -48,7 +48,9 @@ import {
   AlertCircle,
   Copy,
   Mic,
-  MicOff
+  MicOff,
+  Image,
+  Video
 } from 'lucide-react'
 
 import { PlusIcon } from '@radix-ui/react-icons'
@@ -101,5 +103,7 @@ export const ICONS: IconTypeMap = {
   info: Info,
   mic: Mic,
   'mic-off': MicOff,
-  copy: Copy
+  copy: Copy,
+  image: Image,
+  video: Video
 }
