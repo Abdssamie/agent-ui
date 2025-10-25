@@ -151,11 +151,11 @@ export function WorkflowVisualization({
               <p className="text-sm font-medium text-red-500">
                 Workflow Errors
               </p>
-              {execution.errors.map((error, idx) => (
-                <p key={idx} className="text-xs text-red-500/80">
-                  {error}
-                </p>
-              ))}
+              {[...new Set(execution.errors)].map((error, idx) => (
+                    <p key={idx} className="text-xs text-red-500/80">
+                      {error}
+                    </p>
+                  ))}
             </div>
           </div>
         </motion.div>
