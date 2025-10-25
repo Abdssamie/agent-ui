@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import {
   CheckCircle2,
@@ -15,6 +15,7 @@ import {
 import type { WorkflowExecution, WorkflowStep } from '@/types/workflow'
 import { formatDuration, formatTimestamp } from '@/utils/workflow'
 import { cn } from '@/lib/utils'
+import { toast } from 'sonner'
 
 interface WorkflowVisualizationProps {
   execution: WorkflowExecution
@@ -32,6 +33,8 @@ function getStatusIcon(status: WorkflowStep['status']) {
     case 'cancelled':
       return <AlertCircle className="h-5 w-5 text-orange-500" />
     case 'pending':
+      return <Circle className="h-5 w-5 text-muted-foreground" />
+    default:
       return <Circle className="h-5 w-5 text-muted-foreground" />
   }
 }
@@ -83,6 +86,13 @@ function getWorkflowStatusBadge(status: WorkflowExecution['status']) {
           </span>
         </div>
       )
+    default:
+      return (
+        <div className="flex items-center gap-2 rounded-lg border border-primary/30 bg-accent px-3 py-1.5">
+          <Circle className="h-4 w-4 text-muted-foreground" />
+          <span className="text-xs font-medium text-muted-foreground">Unknown</span>
+        </div>
+      )
   }
 }
 
@@ -91,6 +101,15 @@ export function WorkflowVisualization({
   className,
 }: WorkflowVisualizationProps) {
   const [copiedSteps, setCopiedSteps] = useState<Set<string>>(new Set())
+  const hasShownCancelToastRef = useRef(false)
+
+  // Show toast only once when workflow is cancelled
+  useEffect(() => {
+    if (execution.status === 'cancelled' && !hasShownCancelToastRef.current) {
+      hasShownCancelToastRef.current = true
+      toast.info('Workflow cancelled successfully')
+    }
+  }, [execution.status])
 
   const handleCopyContent = async (stepId: string, content: any) => {
     try {
@@ -176,7 +195,7 @@ export function WorkflowVisualization({
           >
             <div className="flex items-start gap-3">
               {/* Status Icon */}
-              <div className="mt-0.5 flex-shrink-0">{getStatusIcon(step.status)}</div>
+              <div className="mt-0.5 flex-shrink-0">{["cancelled", "error"].includes(execution.status)? getStatusIcon(execution.status): getStatusIcon(step.status)}</div>
 
               {/* Step Content */}
               <div className="min-w-0 flex-1 space-y-2">

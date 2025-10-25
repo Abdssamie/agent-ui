@@ -155,7 +155,7 @@ export const cancelWorkflowRunAPI = async (
       return false
     }
 
-    toast.success('Workflow cancelled successfully')
+    toast.success('Workflow marked for cancellation. Please wait')
     return true
   } catch (error) {
     console.error('Error cancelling workflow:', error)

@@ -90,6 +90,10 @@ export function buildWorkflowExecution(
 
   // Process events to build step states
   for (const event of events) {
+    if (event.event == "WorkflowCancelled") {
+      status = "cancelled";
+      break
+    };
     switch (event.event) {
       case 'StepStarted': {
         const stepStarted = event
@@ -143,23 +147,6 @@ export function buildWorkflowExecution(
         for (const step of steps.values()) {
           if (step.status === 'running') {
             step.status = 'error'
-          }
-        }
-        break
-      }
-
-      case 'WorkflowCancelled': {
-        wasCancelled = true
-        status = 'cancelled'
-        completedAt = event.created_at
-        // Mark any running steps as cancelled
-        for (const step of steps.values()) {
-          if (step.status === 'running') {
-            step.status = 'cancelled'
-            step.completed_at = event.created_at
-            step.duration = step.started_at
-              ? event.created_at - step.started_at
-              : undefined
           }
         }
         break

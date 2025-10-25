@@ -52,9 +52,13 @@ export const WorkflowManager = ({ baseUrl, dbId }: WorkflowManagerProps) => {
 
   const handleTrigger = (workflowId: string) => {
     const workflow = workflows.find(w => w.id === workflowId)
+    
     if (workflow) {
       setSelectedWorkflow(workflow)
-      setExecutionLogs([])
+      // Only reset logs if this is a different workflow or not currently executing
+      if (executingWorkflowId !== workflowId) {
+        setExecutionLogs([])
+      }
       setDialogOpen(true)
     }
   }
@@ -82,10 +86,15 @@ export const WorkflowManager = ({ baseUrl, dbId }: WorkflowManagerProps) => {
           // Handle streaming events
           setExecutionLogs(prev => [...prev, `[${event}] ${data}`])
           
-          // Extract run_id from workflow events
+          // Extract workflow_run_id from workflow events
           try {
             const parsedData = JSON.parse(data)
-            if (parsedData.run_id && !currentRunId) {
+            // Use workflow_run_id for workflow cancellation, not agent run_id
+            if (parsedData.workflow_run_id && !currentRunId) {
+              setCurrentRunId(parsedData.workflow_run_id)
+            }
+            // Fallback to run_id only if it's a WorkflowStarted event (which has the workflow run_id)
+            else if (parsedData.event === 'WorkflowStarted' && parsedData.run_id && !currentRunId) {
               setCurrentRunId(parsedData.run_id)
             }
           } catch {
