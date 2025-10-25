@@ -51,7 +51,7 @@ export const WorkflowCard = ({ workflow, onTriggerAction, isExecuting }: Workflo
 
         <Button
           onClick={() => workflow.id && onTriggerAction(workflow.id)}
-          disabled={!workflow.id || isExecuting}
+          disabled={!workflow.id}
           size="sm"
           className="flex items-center gap-2 rounded-xl bg-primary text-background hover:bg-primary/90 disabled:opacity-50"
         >
