@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { TextArea } from '@/components/ui/textarea'
 import Icon from '@/components/ui/icon'
 import { WorkflowSummary } from '@/types/workflow'
 import { WorkflowVisualization } from './WorkflowVisualization'
@@ -37,7 +38,57 @@ export const WorkflowExecutionDialog = ({
   isCancelling = false
 }: WorkflowExecutionDialogProps) => {
   const [message, setMessage] = useState('')
+  const [inputMode, setInputMode] = useState<'simple' | 'json'>('simple')
+  const [jsonInput, setJsonInput] = useState('{\n  "message": "",\n  "images": []\n}')
+  const [jsonError, setJsonError] = useState<string | null>(null)
   const logsEndRef = useRef<HTMLDivElement>(null)
+
+  // Determine input type from schema
+  const inputType = useMemo(() => {
+    // If no input_schema, default to string input (message field)
+    if (!workflow?.input_schema) {
+      return 'string'
+    }
+    
+    const schema = workflow.input_schema
+    
+    // Check if it's a string type (simple message)
+    if (schema.type === 'string') return 'string'
+    
+    // Check if it's an object type (structured JSON)
+    if (schema.type === 'object' || schema.properties) return 'object'
+    
+    // Check if schema has anyOf with string type (Pydantic sometimes generates this)
+    if (schema.anyOf) {
+      const hasString = schema.anyOf.some((s: any) => s.type === 'string')
+      if (hasString) return 'string'
+    }
+    
+    // Default to string for unknown types
+    return 'string'
+  }, [workflow])
+
+  // Initialize input mode and JSON template based on workflow input_schema
+  useEffect(() => {
+    if (inputType === 'string') {
+      // Simple string input (agent-based workflows)
+      setInputMode('simple')
+      setMessage('')
+      
+      // Set JSON template from metadata if available
+      if (workflow?.metadata?.json_input_example) {
+        setJsonInput(JSON.stringify(workflow.metadata.json_input_example, null, 2))
+      } else {
+        // Default template for agent workflows
+        setJsonInput('{\n  "message": ""\n}')
+      }
+    } else if (inputType === 'object') {
+      // Structured JSON input (function-based workflows)
+      setInputMode('json')
+      const template = generateTemplateFromSchema(workflow?.input_schema || {})
+      setJsonInput(JSON.stringify(template, null, 2))
+    }
+  }, [workflow, inputType])
 
   // Parse logs into workflow execution object
   const workflowExecution = useMemo(() => {
@@ -59,16 +110,87 @@ export const WorkflowExecutionDialog = ({
   }, [executionLogs])
 
   const handleExecute = () => {
-    if (message.trim() && !isExecuting) {
-      onExecuteAction(message.trim())
+    if (isExecuting) return
+
+    if (inputMode === 'simple') {
+      // String input - wrap in JSON object with "message" field
+      if (message.trim()) {
+        const inputData = { message: message.trim() }
+        onExecuteAction(JSON.stringify(inputData))
+      }
+    } else {
+      // JSON mode
+      try {
+        const parsed = JSON.parse(jsonInput)
+        setJsonError(null)
+        onExecuteAction(JSON.stringify(parsed))
+      } catch (error) {
+        setJsonError(error instanceof Error ? error.message : 'Invalid JSON')
+        toast.error('Invalid JSON input')
+      }
     }
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === 'Enter' && !e.shiftKey && inputMode === 'simple') {
       e.preventDefault()
       handleExecute()
     }
+  }
+
+  const handleJsonChange = (value: string) => {
+    setJsonInput(value)
+    // Clear error when user starts typing
+    if (jsonError) {
+      setJsonError(null)
+    }
+  }
+
+  const toggleInputMode = () => {
+    const newMode = inputMode === 'simple' ? 'json' : 'simple'
+    setInputMode(newMode)
+    
+    // Convert between modes
+    if (newMode === 'json' && message.trim()) {
+      setJsonInput(JSON.stringify({ message: message.trim(), images: [] }, null, 2))
+    } else if (newMode === 'simple' && jsonInput.trim()) {
+      try {
+        const parsed = JSON.parse(jsonInput)
+        if (parsed.message) {
+          setMessage(parsed.message)
+        }
+      } catch {
+        // Ignore parse errors when switching modes
+      }
+    }
+  }
+
+  const generateTemplateFromSchema = (schema: Record<string, any>): Record<string, any> => {
+    const template: Record<string, any> = {}
+    
+    if (!schema.properties) {
+      return { message: '' }
+    }
+
+    for (const [key, value] of Object.entries(schema.properties)) {
+      const prop = value as any
+      
+      if (prop.type === 'string') {
+        template[key] = prop.default || ''
+      } else if (prop.type === 'array') {
+        template[key] = prop.default || []
+      } else if (prop.type === 'object') {
+        template[key] = prop.default || {}
+      } else if (prop.type === 'boolean') {
+        template[key] = prop.default || false
+      } else if (prop.type === 'number' || prop.type === 'integer') {
+        template[key] = prop.default || 0
+      } else {
+        template[key] = prop.default || null
+      }
+    }
+
+    return template
   }
 
   const handleCopyLogs = () => {
@@ -86,11 +208,11 @@ export const WorkflowExecutionDialog = ({
   return (
     <Dialog open={open} onOpenChange={onOpenChangeAction}  >
       <DialogContent className="max-w-3xl max-h-[80vh] flex flex-col bg-background/95 backdrop-blur-sm rounded-xl border !scrollbar-thick border-primary/15">
-        <DialogHeader>
+        <DialogHeader className="pr-12">
           <DialogTitle className="text-xs font-medium uppercase text-primary">
             Execute Workflow
           </DialogTitle>
-          <DialogDescription className="text-xs text-muted-foreground">
+          <DialogDescription className="text-xs text-muted-foreground break-words pr-2">
             {workflow?.name || 'Unknown Workflow'}
           </DialogDescription>
         </DialogHeader>
@@ -98,36 +220,85 @@ export const WorkflowExecutionDialog = ({
         <div className="flex-1 flex flex-col gap-4 overflow-hidden px-2">
           {/* Input Section */}
           <div className="space-y-2">
-            <label className="text-xs font-medium uppercase text-muted">
-              Message
-            </label>
-            <div className="flex gap-2">
-              <Input
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Enter workflow message..."
-                disabled={isExecuting}
-                className="flex-1 rounded-xl border-primary/15 bg-accent text-xs text-primary placeholder:text-muted"
-              />
-              <Button
-                onClick={handleExecute}
-                disabled={!message.trim() || isExecuting}
-                className="flex items-center gap-2 rounded-xl bg-primary text-background hover:bg-primary/90 disabled:opacity-50"
-              >
-                {isExecuting ? (
-                  <>
-                    <Icon type="loader" size="xs" className="animate-spin text-background" />
-                    <span className="text-xs font-semibold uppercase">Running</span>
-                  </>
-                ) : (
-                  <>
-                    <Icon type="send" size="xs" className="text-background" />
-                    <span className="text-xs font-semibold uppercase">Execute</span>
-                  </>
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-medium uppercase text-muted">
+                  {inputMode === 'simple' ? 'Message' : 'JSON Input'}
+                </label>
+                {inputType === 'string' && (
+                  <Button
+                    onClick={toggleInputMode}
+                    variant="ghost"
+                    size="sm"
+                    disabled={isExecuting}
+                    className="h-6 px-2 text-xs text-muted-foreground hover:text-primary"
+                  >
+                    <Icon type={inputMode === 'simple' ? 'file' : 'edit'} size="xs" />
+                    <span className="ml-1">{inputMode === 'simple' ? 'JSON Mode' : 'Simple Mode'}</span>
+                  </Button>
                 )}
-              </Button>
-            </div>
+              </div>
+
+              {inputMode === 'simple' ? (
+              <div className="flex gap-2">
+                <Input
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Enter workflow message..."
+                  disabled={isExecuting}
+                  className="flex-1 rounded-xl border-primary/15 bg-accent text-xs text-primary placeholder:text-muted"
+                />
+                <Button
+                  onClick={handleExecute}
+                  disabled={!message.trim() || isExecuting}
+                  className="flex items-center gap-2 rounded-xl bg-primary text-background hover:bg-primary/90 disabled:opacity-50"
+                >
+                  {isExecuting ? (
+                    <>
+                      <Icon type="loader" size="xs" className="animate-spin text-background" />
+                      <span className="text-xs font-semibold uppercase">Running</span>
+                    </>
+                  ) : (
+                    <>
+                      <Icon type="send" size="xs" className="text-background" />
+                      <span className="text-xs font-semibold uppercase">Execute</span>
+                    </>
+                  )}
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <TextArea
+                  value={jsonInput}
+                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => handleJsonChange(e.target.value)}
+                  placeholder='{\n  "message": "Your message here",\n  "images": [\n    {\n      "image_path": "uploads/image.png",\n      "description": "Image description",\n      "ratio": "landscape"\n    }\n  ]\n}'
+                  disabled={isExecuting}
+                  className={`min-h-[120px] font-mono text-xs rounded-xl border-primary/15 bg-accent text-primary placeholder:text-muted ${
+                    jsonError ? 'border-red-500' : ''
+                  }`}
+                />
+                {jsonError && (
+                  <p className="text-xs text-red-500">{jsonError}</p>
+                )}
+                <Button
+                  onClick={handleExecute}
+                  disabled={isExecuting}
+                  className="w-full flex items-center justify-center gap-2 rounded-xl bg-primary text-background hover:bg-primary/90 disabled:opacity-50"
+                >
+                  {isExecuting ? (
+                    <>
+                      <Icon type="loader" size="xs" className="animate-spin text-background" />
+                      <span className="text-xs font-semibold uppercase">Running</span>
+                    </>
+                  ) : (
+                    <>
+                      <Icon type="send" size="xs" className="text-background" />
+                      <span className="text-xs font-semibold uppercase">Execute</span>
+                    </>
+                  )}
+                </Button>
+              </div>
+            )}
           </div>
 
           {/* Execution Results */}
