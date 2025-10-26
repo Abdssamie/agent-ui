@@ -3,6 +3,8 @@ export interface WorkflowSummary {
   name: string | null
   description: string | null
   db_id: string | null
+  input_schema?: Record<string, any> | null
+  metadata?: Record<string, any> | null
 }
 
 export interface WorkflowExecutionInput {
