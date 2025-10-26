@@ -113,8 +113,8 @@ export function WorkflowVisualization({
 
   const handleCopyContent = async (stepId: string, content: any) => {
     try {
-      const textToCopy = typeof content === 'string' 
-        ? content 
+      const textToCopy = typeof content === 'string'
+        ? content
         : JSON.stringify(content, null, 2)
       await navigator.clipboard.writeText(textToCopy)
       setCopiedSteps(prev => new Set(prev).add(stepId))
@@ -171,10 +171,10 @@ export function WorkflowVisualization({
                 Workflow Errors
               </p>
               {[...new Set(execution.errors)].map((error, idx) => (
-                    <p key={idx} className="text-xs text-red-500/80">
-                      {error}
-                    </p>
-                  ))}
+                <p key={idx} className="text-xs text-red-500/80">
+                  {error}
+                </p>
+              ))}
             </div>
           </div>
         </motion.div>
@@ -195,7 +195,7 @@ export function WorkflowVisualization({
           >
             <div className="flex items-start gap-3">
               {/* Status Icon */}
-              <div className="mt-0.5 flex-shrink-0">{["cancelled", "error"].includes(execution.status)? getStatusIcon(execution.status): getStatusIcon(step.status)}</div>
+              <div className="mt-0.5 flex-shrink-0">{["cancelled", "error"].includes(execution.status) ? getStatusIcon(execution.status) : getStatusIcon(step.status)}</div>
 
               {/* Step Content */}
               <div className="min-w-0 flex-1 space-y-2">
