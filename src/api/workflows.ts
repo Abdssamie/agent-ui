@@ -15,16 +15,16 @@ export const getWorkflowsAPI = async (
   dbId?: string | null,
 ): Promise<WorkflowSummary[]> => {
   const url = APIRoutes.Workflows.ListWorkflows(baseUrl, dbId)
-  
+
   try {
     const response = await fetch(url, { method: 'GET' })
-    
+
     if (!response.ok) {
       const errorData: WorkflowErrorResponse = await response.json()
       toast.error(`Failed to fetch workflows: ${errorData.detail}`)
       return []
     }
-    
+
     return await response.json()
   } catch (error) {
     console.error('Error fetching workflows:', error)
@@ -42,15 +42,15 @@ export const getWorkflowDetailsAPI = async (
   dbId?: string | null,
 ): Promise<WorkflowSummary> => {
   const url = `${baseUrl}/workflows/${workflowId}${dbId ? `?db_id=${dbId}` : ''}`
-  
+
   try {
     const response = await fetch(url, { method: 'GET' })
-    
+
     if (!response.ok) {
       const errorData: WorkflowErrorResponse = await response.json()
       throw new Error(errorData.detail)
     }
-    
+
     return await response.json()
   } catch (error) {
     console.error('Error fetching workflow details:', error)
@@ -73,7 +73,7 @@ export const executeWorkflowAPI = async (
   onEvent?: (event: string, data: string) => void
 ): Promise<WorkflowExecutionResponse | null> => {
   const url = APIRoutes.Workflows.ExecuteWorkflow(baseUrl, workflowId)
-  
+
   try {
     // Prepare form data
     const formData = new FormData()
@@ -103,15 +103,15 @@ export const executeWorkflowAPI = async (
       }
 
       let buffer = ''
-      
+
       while (true) {
         const { done, value } = await reader.read()
-        
+
         if (done) break
 
         buffer += decoder.decode(value, { stream: true })
         const lines = buffer.split('\n')
-        
+
         // Keep the last incomplete line in buffer
         buffer = lines.pop() || ''
 
@@ -120,10 +120,10 @@ export const executeWorkflowAPI = async (
             const eventType = line.substring(6).trim()
             continue
           }
-          
+
           if (line.startsWith('data:')) {
             const eventData = line.substring(5).trim()
-            
+
             // Parse the event if callback is provided
             if (onEvent && eventData) {
               try {
@@ -137,7 +137,7 @@ export const executeWorkflowAPI = async (
           }
         }
       }
-      
+
       return null // Streaming doesn't return a final response
     }
 
@@ -166,7 +166,7 @@ export const cancelWorkflowRunAPI = async (
 ): Promise<boolean> => {
   // Note: This endpoint may need to be added to the API if not yet available
   const url = `${baseUrl}/workflows/${workflowId}/runs/${runId}/cancel`
-  
+
   try {
     const response = await fetch(url, {
       method: 'POST'
