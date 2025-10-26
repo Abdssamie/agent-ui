@@ -137,7 +137,7 @@ export function WorkflowVisualization({
       className={cn('space-y-4', className)}
     >
       {/* Workflow Header */}
-      <div className="rounded-xl border border-primary/15 bg-accent p-4">
+      <div className="top-[-1rem] -mx-4 -mt-4 mb-4 z-10 rounded-xl border border-primary/15 bg-background/95 backdrop-blur-sm p-4 shadow-sm">
         <div className="flex items-start justify-between">
           <div className="space-y-1">
             <h3 className="font-medium text-primary">
@@ -259,6 +259,40 @@ export function WorkflowVisualization({
             )}
           </motion.div>
         ))}
+        
+        {/* Virtual "Waiting" Step - Show when workflow is running and all steps are completed */}
+        {execution.status === 'running' && 
+         execution.steps.length > 0 && 
+         execution.steps.every(s => s.status === 'completed') && (
+          <motion.div
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="relative rounded-xl border border-blue-500/30 bg-blue-500/5 p-4"
+          >
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 flex-shrink-0">
+                <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
+              </div>
+              <div className="min-w-0 flex-1 space-y-2">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-medium uppercase text-muted">
+                        Next Step
+                      </span>
+                      <h4 className="font-medium text-blue-500">
+                        Waiting for next step...
+                      </h4>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Workflow is processing
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
       </div>
 
       {/* Workflow Summary */}
@@ -268,7 +302,7 @@ export function WorkflowVisualization({
           <div className="flex items-center gap-4 text-muted-foreground">
             <span>
               {execution.steps.filter((s) => s.status === 'completed').length}/
-              {execution.status === 'cancelled' ? '?' : execution.steps.length} completed
+              {execution.status === 'completed' ? execution.steps.length : '?'} completed
             </span>
             {execution.steps.filter((s) => s.status === 'error').length > 0 && (
               <span className="text-red-500">
