@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { WorkflowCard } from './WorkflowCard'
 import { WorkflowExecutionDialog } from './WorkflowExecutionDialog'
-import { getWorkflowsAPI, executeWorkflowAPI, cancelWorkflowRunAPI } from '@/api/workflows'
+import { getWorkflowsAPI, getWorkflowDetailsAPI, executeWorkflowAPI, cancelWorkflowRunAPI } from '@/api/workflows'
 import { WorkflowSummary } from '@/types/workflow'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -50,11 +50,20 @@ export const WorkflowManager = ({ baseUrl, dbId }: WorkflowManagerProps) => {
     }
   }, [loadWorkflows])
 
-  const handleTrigger = (workflowId: string) => {
+  const handleTrigger = async (workflowId: string) => {
     const workflow = workflows.find(w => w.id === workflowId)
     
     if (workflow) {
-      setSelectedWorkflow(workflow)
+      // Fetch detailed workflow info (including input_schema)
+      try {
+        const detailedWorkflow = await getWorkflowDetailsAPI(baseUrl, workflowId, dbId)
+        setSelectedWorkflow(detailedWorkflow)
+      } catch (error) {
+        console.error('Error fetching workflow details:', error)
+        // Fallback to basic workflow info
+        setSelectedWorkflow(workflow)
+      }
+      
       // Only reset logs if this is a different workflow or not currently executing
       if (executingWorkflowId !== workflowId) {
         setExecutionLogs([])
