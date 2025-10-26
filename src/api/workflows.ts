@@ -25,13 +25,36 @@ export const getWorkflowsAPI = async (
       return []
     }
     
-
-
     return await response.json()
   } catch (error) {
     console.error('Error fetching workflows:', error)
     toast.error('Error fetching workflows')
     return []
+  }
+}
+
+/**
+ * Fetch detailed workflow information including input_schema
+ */
+export const getWorkflowDetailsAPI = async (
+  baseUrl: string,
+  workflowId: string,
+  dbId?: string | null,
+): Promise<WorkflowSummary> => {
+  const url = `${baseUrl}/workflows/${workflowId}${dbId ? `?db_id=${dbId}` : ''}`
+  
+  try {
+    const response = await fetch(url, { method: 'GET' })
+    
+    if (!response.ok) {
+      const errorData: WorkflowErrorResponse = await response.json()
+      throw new Error(errorData.detail)
+    }
+    
+    return await response.json()
+  } catch (error) {
+    console.error('Error fetching workflow details:', error)
+    throw error
   }
 }
 
