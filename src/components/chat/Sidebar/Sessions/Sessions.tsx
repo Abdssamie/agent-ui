@@ -100,7 +100,7 @@ const Sessions = () => {
       // Reset when there's no session
       loadedSessionRef.current = null
     }
-  }, [hydrated, sessionId, selectedEndpoint, agentId, teamId, dbId])
+  }, [hydrated, sessionId, selectedEndpoint, agentId, teamId, dbId, getSession])
 
   useEffect(() => {
     if (!selectedEndpoint || isEndpointLoading) return
@@ -122,7 +122,8 @@ const Sessions = () => {
     mode,
     isEndpointLoading,
     getSessions,
-    dbId
+    dbId,
+    setSessionsData
   ])
 
   useEffect(() => {

@@ -1,12 +1,12 @@
 'use client'
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { motion } from 'framer-motion'
-import { WorkflowCard } from './WorkflowCard'
+import { WorkflowGrid } from './WorkflowGrid'
+import { FilterPanel, SearchBar, SortSelector, usePersistentState } from './Controls'
 import { WorkflowExecutionDialog } from './WorkflowExecutionDialog'
 import { getWorkflowsAPI, getWorkflowDetailsAPI, executeWorkflowAPI, cancelWorkflowRunAPI } from '@/api/workflows'
 import { WorkflowSummary } from '@/types/workflow'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import Icon from '@/components/ui/icon'
 import { toast } from 'sonner'
 
@@ -18,8 +18,10 @@ interface WorkflowManagerProps {
 export const WorkflowManager = ({ baseUrl, dbId }: WorkflowManagerProps) => {
   const [workflows, setWorkflows] = useState<WorkflowSummary[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [selectedWorkflow, setSelectedWorkflow] = useState<WorkflowSummary | null>(null)
+  const [searchQuery, setSearchQuery] = usePersistentState<string>('wf.query', '')
+  const [filters, setFilters] = usePersistentState<{ query: string; category: 'all' | string; status: 'all' | 'active' | 'inactive'; date: 'any' | '24h' | '7d' | '30d' }>('wf.filters', { query: '', category: 'all', status: 'all', date: 'any' })
+  const [sortKey, setSortKey] = usePersistentState<'name' | 'date' | 'execCount'>('wf.sort', 'name')
+    const [selectedWorkflow, setSelectedWorkflow] = useState<WorkflowSummary | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [isExecuting, setIsExecuting] = useState(false)
   const [executionLogs, setExecutionLogs] = useState<string[]>([])
@@ -167,12 +169,44 @@ export const WorkflowManager = ({ baseUrl, dbId }: WorkflowManagerProps) => {
     }
   }
 
-  // Filter workflows based on search
-  const filteredWorkflows = workflows.filter(workflow =>
-    workflow.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    workflow.id?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    workflow.description?.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  // Search + filter + sort with memoization
+  const filteredWorkflows = useMemo(() => {
+    const q = (searchQuery || filters.query || '').toLowerCase()
+    let list = workflows.filter(w => {
+      const matchesQuery = q
+        ? (w.name?.toLowerCase().includes(q) || w.id?.toLowerCase().includes(q) || w.description?.toLowerCase().includes(q))
+        : true
+      const matchesCategory = filters.category === 'all' ? true : (w as any).category === filters.category
+      const matchesStatus = filters.status === 'all' ? true : ((w as any).active ? 'active' : 'inactive') === filters.status
+      const matchesDate = (() => {
+        const ts = (w as any).updated_at || (w as any).created_at
+        if (!ts || filters.date === 'any') return true
+        const now = Date.now()
+        const t = new Date(ts).getTime()
+        const diff = now - t
+        if (filters.date === '24h') return diff <= 24 * 60 * 60 * 1000
+        if (filters.date === '7d') return diff <= 7 * 24 * 60 * 60 * 1000
+        if (filters.date === '30d') return diff <= 30 * 24 * 60 * 60 * 1000
+        return true
+      })()
+      return matchesQuery && matchesCategory && matchesStatus && matchesDate
+    })
+
+    list.sort((a, b) => {
+      if (sortKey === 'name') return (a.name || '').localeCompare(b.name || '')
+      if (sortKey === 'date') {
+        const ad = new Date((a as any).updated_at || (a as any).created_at || 0).getTime()
+        const bd = new Date((b as any).updated_at || (b as any).created_at || 0).getTime()
+        return bd - ad
+      }
+      // execCount
+      const ae = (a as any).execution_count || 0
+      const be = (b as any).execution_count || 0
+      return be - ae
+    })
+
+    return list
+  }, [workflows, searchQuery, filters, sortKey])
 
   return (
     <div className="flex h-full flex-col bg-background pt-16">
@@ -180,7 +214,7 @@ export const WorkflowManager = ({ baseUrl, dbId }: WorkflowManagerProps) => {
         <div className="mx-auto max-w-6xl space-y-6">
           {/* Header */}
           <div className="space-y-2">
-            <h1 className="text-xs font-medium uppercase text-primary">
+            <h1 className="text-xs font-medium uppercase">
               Workflows
             </h1>
             <p className="text-xs text-muted-foreground">
@@ -188,41 +222,26 @@ export const WorkflowManager = ({ baseUrl, dbId }: WorkflowManagerProps) => {
             </p>
           </div>
 
-          {/* Search and Refresh */}
-          <div className="flex items-center gap-3">
-            <div className="relative flex-1">
-              <Icon
-                type="search"
-                size="xs"
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-muted"
-              />
-              <Input
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search workflows..."
-                className="pl-9 rounded-xl border-primary/15 bg-accent text-xs text-primary placeholder:text-muted"
-              />
+          {/* Search / Filters / Controls */}
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-3">
+              <div className="flex-1">
+                <SearchBar value={searchQuery} onChange={setSearchQuery} />
+              </div>
+              <SortSelector value={sortKey} onChange={setSortKey} />
+              <Button onClick={loadWorkflows} disabled={isLoading} variant="outline" className="rounded-xl border-primary/15">
+                <Icon type="refresh" size="xs" className={isLoading ? 'animate-spin' : ''} />
+                <span className="text-xs font-medium uppercase">Refresh</span>
+              </Button>
             </div>
-            <Button
-              onClick={loadWorkflows}
-              disabled={isLoading}
-              variant="outline"
-              className="rounded-xl border-primary/15"
-            >
-              <Icon
-                type="refresh"
-                size="xs"
-                className={isLoading ? 'animate-spin' : ''}
-              />
-              <span className="text-xs font-medium uppercase">Refresh</span>
-            </Button>
+            <FilterPanel filters={{ ...filters, query: searchQuery }} onChange={setFilters} />
           </div>
 
           {/* Workflows List */}
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
               <div className="text-center space-y-3">
-                <Icon type="loader" size="md" className="mx-auto animate-spin text-primary" />
+                <Icon type="loader" size="md" className="mx-auto animate-spin" />
                 <p className="text-xs text-muted-foreground">Loading workflows...</p>
               </div>
             </div>
@@ -230,10 +249,10 @@ export const WorkflowManager = ({ baseUrl, dbId }: WorkflowManagerProps) => {
             <div className="flex items-center justify-center py-12">
               <div className="text-center space-y-3">
                 <div className="w-16 h-16 mx-auto rounded-xl bg-accent border border-primary/15 flex items-center justify-center">
-                  <Icon type="database" size="md" className="text-muted" />
+                  <Icon type="database" size="md" />
                 </div>
                 <div>
-                  <h3 className="text-xs font-medium uppercase text-primary mb-1">
+                  <h3 className="text-xs font-medium uppercase mb-1">
                     {searchQuery ? 'No workflows found' : 'No workflows available'}
                   </h3>
                   <p className="text-xs text-muted-foreground">
@@ -245,19 +264,13 @@ export const WorkflowManager = ({ baseUrl, dbId }: WorkflowManagerProps) => {
               </div>
             </div>
           ) : (
-            <motion.div
-              className="grid gap-4 md:grid-cols-2"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-            >
-              {filteredWorkflows.map((workflow) => (
-                <WorkflowCard
-                  key={workflow.id}
-                  workflow={workflow}
-                  onTriggerAction={handleTrigger}
-                  isExecuting={executingWorkflowId === workflow.id}
-                />
-              ))}
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+              <WorkflowGrid
+                workflows={filteredWorkflows}
+                isLoading={isLoading}
+                onTriggerAction={handleTrigger}
+                isExecutingId={executingWorkflowId}
+              />
             </motion.div>
           )}
 
@@ -265,7 +278,7 @@ export const WorkflowManager = ({ baseUrl, dbId }: WorkflowManagerProps) => {
           {!isLoading && workflows.length > 0 && (
             <div className="flex items-center gap-4 text-xs text-muted-foreground">
               <span>Total: {workflows.length} workflows</span>
-              {searchQuery && (
+              {(searchQuery || filters.category !== 'all' || filters.status !== 'all' || filters.date !== 'any') && (
                 <span>Showing: {filteredWorkflows.length} results</span>
               )}
             </div>

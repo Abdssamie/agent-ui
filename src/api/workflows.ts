@@ -1,5 +1,7 @@
 import { toast } from 'sonner'
 import { APIRoutes } from './routes'
+import { apiClient } from '@/lib/apiClient'
+import { workflowCache, CacheKeys } from '@/lib/workflowCache'
 import type {
   WorkflowErrorResponse,
   WorkflowExecutionInput,
@@ -7,34 +9,68 @@ import type {
   WorkflowSummary
 } from '@/types/workflow'
 
+const LOG_PREFIX = '[WorkflowAPI]'
+
 /**
  * Fetch all available workflows from the AgentOS instance
+ * Enhanced with caching, retry logic, and request deduplication
  */
 export const getWorkflowsAPI = async (
   baseUrl: string,
   dbId?: string | null,
 ): Promise<WorkflowSummary[]> => {
   const url = APIRoutes.Workflows.ListWorkflows(baseUrl, dbId)
+  const cacheKey = CacheKeys.workflowList(baseUrl, dbId)
+
+  console.log(`${LOG_PREFIX} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`)
+  console.log(`${LOG_PREFIX} getWorkflowsAPI called`)
+  console.log(`${LOG_PREFIX} Base URL: ${baseUrl}`)
+  console.log(`${LOG_PREFIX} DB ID: ${dbId || 'none'}`)
+  console.log(`${LOG_PREFIX} Cache key: ${cacheKey}`)
 
   try {
-    const response = await fetch(url, { method: 'GET' })
-
-    if (!response.ok) {
-      const errorData: WorkflowErrorResponse = await response.json()
-      toast.error(`Failed to fetch workflows: ${errorData.detail}`)
-      return []
+    // Check if cached
+    const cached = workflowCache.get<WorkflowSummary[]>(cacheKey)
+    if (cached) {
+      console.log(`${LOG_PREFIX} ⚡ Cache HIT! Returning ${cached.length} workflows from cache`)
+      console.log(`${LOG_PREFIX} Cache stats:`, workflowCache.getStats())
+      return cached
     }
 
-    return await response.json()
-  } catch (error) {
-    console.error('Error fetching workflows:', error)
-    toast.error('Error fetching workflows')
+    console.log(`${LOG_PREFIX} Cache MISS - fetching from API`)
+
+    // Use cache with getOrSet pattern
+    const result = await workflowCache.getOrSet(
+      cacheKey,
+      async () => {
+        console.log(`${LOG_PREFIX} Executing API request...`)
+        const workflows = await apiClient.request<WorkflowSummary[]>(url, {
+          method: 'GET',
+          deduplicate: true,
+          retryConfig: {
+            maxRetries: 3,
+            initialDelay: 1000
+          }
+        })
+        console.log(`${LOG_PREFIX} ✓ Received ${workflows.length} workflows from API`)
+        return workflows
+      }
+    )
+
+    console.log(`${LOG_PREFIX} ✓ Workflows cached successfully`)
+    console.log(`${LOG_PREFIX} Cache stats:`, workflowCache.getStats())
+    
+    return result
+  } catch (error: any) {
+    console.error(`${LOG_PREFIX} ✗ Error fetching workflows:`, error)
+    toast.error(error.data?.detail || 'Error fetching workflows')
     return []
   }
 }
 
 /**
  * Fetch detailed workflow information including input_schema
+ * Enhanced with caching, retry logic, and schema validation
  */
 export const getWorkflowDetailsAPI = async (
   baseUrl: string,
@@ -42,18 +78,74 @@ export const getWorkflowDetailsAPI = async (
   dbId?: string | null,
 ): Promise<WorkflowSummary> => {
   const url = `${baseUrl}/workflows/${workflowId}${dbId ? `?db_id=${dbId}` : ''}`
+  const cacheKey = CacheKeys.workflowDetails(baseUrl, workflowId, dbId)
+
+  console.log(`${LOG_PREFIX} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`)
+  console.log(`${LOG_PREFIX} getWorkflowDetailsAPI called`)
+  console.log(`${LOG_PREFIX} Workflow ID: ${workflowId}`)
+  console.log(`${LOG_PREFIX} Cache key: ${cacheKey}`)
 
   try {
-    const response = await fetch(url, { method: 'GET' })
-
-    if (!response.ok) {
-      const errorData: WorkflowErrorResponse = await response.json()
-      throw new Error(errorData.detail)
+    // Check if cached
+    const cached = workflowCache.get<WorkflowSummary>(cacheKey)
+    if (cached) {
+      console.log(`${LOG_PREFIX} ⚡ Cache HIT! Returning workflow details from cache`)
+      console.log(`${LOG_PREFIX} Workflow: ${cached.name}`)
+      console.log(`${LOG_PREFIX} Has schema: ${!!cached.input_schema}`)
+      return cached
     }
 
-    return await response.json()
-  } catch (error) {
-    console.error('Error fetching workflow details:', error)
+    console.log(`${LOG_PREFIX} Cache MISS - fetching from API`)
+
+    // Use cache with getOrSet pattern
+    const result = await workflowCache.getOrSet(
+      cacheKey,
+      async () => {
+        console.log(`${LOG_PREFIX} Executing API request...`)
+        const workflow = await apiClient.request<WorkflowSummary>(url, {
+          method: 'GET',
+          deduplicate: true,
+          retryConfig: {
+            maxRetries: 2,
+            initialDelay: 500
+          }
+        })
+
+        console.log(`${LOG_PREFIX} ✓ Received workflow: ${workflow.name}`)
+
+        // Validate and normalize schema if present
+        if (workflow.input_schema) {
+          console.log(`${LOG_PREFIX} Processing input_schema...`)
+          try {
+            // Ensure schema is valid JSON object
+            if (typeof workflow.input_schema === 'string') {
+              console.log(`${LOG_PREFIX} Parsing string schema to JSON`)
+              workflow.input_schema = JSON.parse(workflow.input_schema)
+            }
+            console.log(`${LOG_PREFIX} ✓ Schema validated successfully`)
+            if (workflow.input_schema && typeof workflow.input_schema === 'object') {
+              console.log(`${LOG_PREFIX} Schema properties:`, Object.keys((workflow.input_schema as any).properties || {}))
+            }
+          } catch (error) {
+            console.warn(`${LOG_PREFIX} ⚠ Invalid input_schema format:`, error)
+            workflow.input_schema = null
+          }
+        } else {
+          console.log(`${LOG_PREFIX} No input_schema present`)
+        }
+
+        return workflow
+      },
+      10 * 60 * 1000 // Cache for 10 minutes
+    )
+
+    console.log(`${LOG_PREFIX} ✓ Workflow details cached successfully (TTL: 10 minutes)`)
+    console.log(`${LOG_PREFIX} Cache stats:`, workflowCache.getStats())
+    
+    return result
+  } catch (error: any) {
+    console.error(`${LOG_PREFIX} ✗ Error fetching workflow details:`, error)
+    toast.error(error.data?.detail || 'Error fetching workflow details')
     throw error
   }
 }
@@ -74,6 +166,12 @@ export const executeWorkflowAPI = async (
 ): Promise<WorkflowExecutionResponse | null> => {
   const url = APIRoutes.Workflows.ExecuteWorkflow(baseUrl, workflowId)
 
+  console.log(`${LOG_PREFIX} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`)
+  console.log(`${LOG_PREFIX} executeWorkflowAPI called`)
+  console.log(`${LOG_PREFIX} Workflow ID: ${workflowId}`)
+  console.log(`${LOG_PREFIX} Stream mode: ${input.stream ?? true}`)
+  console.log(`${LOG_PREFIX} Session ID: ${input.session_id || 'none'}`)
+
   try {
     // Prepare form data
     const formData = new FormData()
@@ -82,6 +180,26 @@ export const executeWorkflowAPI = async (
     if (input.session_id) formData.append('session_id', input.session_id)
     if (input.user_id) formData.append('user_id', input.user_id)
 
+    console.log(`${LOG_PREFIX} Form data prepared`)
+
+    // Handle non-streaming response
+    if (!input.stream) {
+      console.log(`${LOG_PREFIX} Using non-streaming mode with enhanced API client`)
+      const result = await apiClient.request<WorkflowExecutionResponse>(url, {
+        method: 'POST',
+        body: formData,
+        deduplicate: false,
+        retryConfig: {
+          maxRetries: 1
+        }
+      })
+      console.log(`${LOG_PREFIX} ✓ Workflow execution completed`)
+      return result
+    }
+
+    console.log(`${LOG_PREFIX} Using streaming mode (SSE)`)
+
+    // Handle streaming response (SSE) - use basic fetch for streaming
     const response = await fetch(url, {
       method: 'POST',
       body: formData
@@ -93,8 +211,7 @@ export const executeWorkflowAPI = async (
       throw new Error(errorData.detail)
     }
 
-    // Handle streaming response (SSE)
-    if (input.stream && onEvent) {
+    if (onEvent) {
       const reader = response.body?.getReader()
       const decoder = new TextDecoder()
 
@@ -137,13 +254,9 @@ export const executeWorkflowAPI = async (
           }
         }
       }
-
-      return null // Streaming doesn't return a final response
     }
 
-    // Handle non-streaming response
-
-    return await response.json()
+    return null // Streaming doesn't return a final response
   } catch (error) {
     console.error('Error executing workflow:', error)
     if (error instanceof Error) {

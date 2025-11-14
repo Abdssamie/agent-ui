@@ -332,6 +332,7 @@ export const ContentManager = () => {
                   {/* Thumbnail */}
                   <div className="relative aspect-video bg-primary/5">
                     {content.thumbnailUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
                       <img
                         src={content.thumbnailUrl}
                         alt={content.name}

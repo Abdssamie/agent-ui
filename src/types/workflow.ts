@@ -214,3 +214,72 @@ export interface WorkflowExecution {
   errors: string[]
   duration?: number
 }
+
+// Enhanced workflow data models for state management
+
+export interface WorkflowFilters {
+  categories: string[]
+  tags: string[]
+  status: ('active' | 'inactive')[]
+  dateRange?: {
+    start: Date
+    end: Date
+  }
+  executionFrequency?: {
+    min: number
+    max: number
+  }
+}
+
+export interface SortOption {
+  field: 'name' | 'lastExecuted' | 'executionCount' | 'createdAt'
+  direction: 'asc' | 'desc'
+}
+
+export interface ExecutionRecord {
+  id: string
+  workflowId: string
+  workflowName: string
+  input: any
+  output?: any
+  status: 'running' | 'completed' | 'error' | 'cancelled'
+  startTime: number
+  endTime?: number
+  duration: number
+  error?: string
+  logs: WorkflowEvent[]
+  sessionId?: string
+  runId?: string
+}
+
+export interface WorkflowSchedule {
+  id: string
+  workflowId: string
+  type: 'once' | 'recurring' | 'cron'
+  input: any
+  enabled: boolean
+  executeAt?: number
+  interval?: {
+    value: number
+    unit: 'minutes' | 'hours' | 'days' | 'weeks'
+  }
+  cronExpression?: string
+  nextExecution?: number
+  lastExecution?: number
+  retryPolicy?: {
+    maxRetries: number
+    retryDelay: number
+  }
+}
+
+export interface CacheEntry<T> {
+  data: T
+  timestamp: number
+  ttl: number
+}
+
+export interface WorkflowCacheConfig {
+  enabled: boolean
+  ttl: number
+  maxSize: number
+}

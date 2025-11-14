@@ -68,6 +68,35 @@ export const WorkflowExecutionDialog = ({
     return 'string'
   }, [workflow])
 
+  // Helper function to generate template from schema
+  const generateTemplateFromSchema = (schema: Record<string, any>): Record<string, any> => {
+    const template: Record<string, any> = {}
+    
+    if (!schema.properties) {
+      return { message: '' }
+    }
+
+    for (const [key, value] of Object.entries(schema.properties)) {
+      const prop = value as any
+      
+      if (prop.type === 'string') {
+        template[key] = prop.default || ''
+      } else if (prop.type === 'array') {
+        template[key] = prop.default || []
+      } else if (prop.type === 'object') {
+        template[key] = prop.default || {}
+      } else if (prop.type === 'boolean') {
+        template[key] = prop.default || false
+      } else if (prop.type === 'number' || prop.type === 'integer') {
+        template[key] = prop.default || 0
+      } else {
+        template[key] = prop.default || null
+      }
+    }
+
+    return template
+  }
+
   // Initialize input mode and JSON template based on workflow input_schema
   useEffect(() => {
     if (inputType === 'string') {
@@ -163,34 +192,6 @@ export const WorkflowExecutionDialog = ({
         // Ignore parse errors when switching modes
       }
     }
-  }
-
-  const generateTemplateFromSchema = (schema: Record<string, any>): Record<string, any> => {
-    const template: Record<string, any> = {}
-    
-    if (!schema.properties) {
-      return { message: '' }
-    }
-
-    for (const [key, value] of Object.entries(schema.properties)) {
-      const prop = value as any
-      
-      if (prop.type === 'string') {
-        template[key] = prop.default || ''
-      } else if (prop.type === 'array') {
-        template[key] = prop.default || []
-      } else if (prop.type === 'object') {
-        template[key] = prop.default || {}
-      } else if (prop.type === 'boolean') {
-        template[key] = prop.default || false
-      } else if (prop.type === 'number' || prop.type === 'integer') {
-        template[key] = prop.default || 0
-      } else {
-        template[key] = prop.default || null
-      }
-    }
-
-    return template
   }
 
   const handleCopyLogs = () => {
