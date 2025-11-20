@@ -24,15 +24,19 @@ export async function GET(request: NextRequest) {
 
     const response = await client.send(command)
 
-    return NextResponse.json({
-      items: (response.Contents || []).map((obj) => ({
+    const items = (response.Contents || [])
+      .filter((obj) => obj.Key && !obj.Key.endsWith('/') && obj.Size && obj.Size > 0)
+      .map((obj) => ({
         id: obj.Key!,
         name: obj.Key!.split('/').pop() || obj.Key!,
         size: obj.Size || 0,
         uploadedAt: obj.LastModified?.toISOString() || new Date().toISOString(),
-      })),
+      }))
+
+    return NextResponse.json({
+      items,
       nextPageToken: response.NextContinuationToken,
-      totalCount: response.KeyCount,
+      totalCount: items.length,
     })
   } catch (error) {
     console.error('List error:', error)
