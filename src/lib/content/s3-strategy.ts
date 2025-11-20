@@ -15,10 +15,6 @@ export class S3Strategy implements StorageStrategy {
     const params = new URLSearchParams()
     if (options?.pageToken) params.set('pageToken', options.pageToken)
     if (options?.limit) params.set('limit', options.limit.toString())
-    if (options?.filter?.search) params.set('search', options.filter.search)
-    if (options?.filter?.type) params.set('type', options.filter.type)
-    if (options?.filter?.sortBy) params.set('sortBy', options.filter.sortBy)
-    if (options?.filter?.sortOrder) params.set('sortOrder', options.filter.sortOrder)
 
     const response = await fetch(`/api/content/list?${params}`)
     if (!response.ok) throw new Error('Failed to list content')
@@ -27,12 +23,15 @@ export class S3Strategy implements StorageStrategy {
 
     const items: ContentItem[] = data.items.map((item: any) => ({
       ...item,
+      type: getContentType(this.getMimeType(item.id)),
       storageProvider: 's3' as const,
-      metadata: { mimeType: item.mimeType },
+      metadata: { mimeType: this.getMimeType(item.id) },
     }))
 
+    const filtered = this.applyFilters(items, options?.filter)
+
     return {
-      items,
+      items: filtered,
       nextPageToken: data.nextPageToken,
       totalCount: data.totalCount,
     }
@@ -83,5 +82,61 @@ export class S3Strategy implements StorageStrategy {
 
   async validateFile(file: File): Promise<{ valid: boolean; error?: string }> {
     return validateFileUtil(file)
+  }
+
+  private getMimeType(key: string): string {
+    const ext = key.split('.').pop()?.toLowerCase()
+    const mimeTypes: Record<string, string> = {
+      jpg: 'image/jpeg',
+      jpeg: 'image/jpeg',
+      png: 'image/png',
+      gif: 'image/gif',
+      webp: 'image/webp',
+      svg: 'image/svg+xml',
+      mp4: 'video/mp4',
+      webm: 'video/webm',
+      mov: 'video/quicktime',
+      pdf: 'application/pdf',
+      doc: 'application/msword',
+      docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      xls: 'application/vnd.ms-excel',
+      xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      txt: 'text/plain',
+      csv: 'text/csv',
+    }
+    return mimeTypes[ext || ''] || 'application/octet-stream'
+  }
+
+  private applyFilters(items: ContentItem[], filter?: ContentFilter): ContentItem[] {
+    let filtered = [...items]
+
+    if (filter?.type) {
+      filtered = filtered.filter((item) => item.type === filter.type)
+    }
+
+    if (filter?.search) {
+      const search = filter.search.toLowerCase()
+      filtered = filtered.filter((item) => item.name.toLowerCase().includes(search))
+    }
+
+    if (filter?.sortBy) {
+      filtered.sort((a, b) => {
+        let comparison = 0
+        switch (filter.sortBy) {
+          case 'name':
+            comparison = a.name.localeCompare(b.name)
+            break
+          case 'date':
+            comparison = new Date(a.uploadedAt).getTime() - new Date(b.uploadedAt).getTime()
+            break
+          case 'size':
+            comparison = a.size - b.size
+            break
+        }
+        return filter.sortOrder === 'desc' ? -comparison : comparison
+      })
+    }
+
+    return filtered
   }
 }
