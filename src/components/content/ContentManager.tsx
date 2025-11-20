@@ -1,12 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { useContentStore } from '@/stores/contentStore'
 import { ContentGrid } from './ContentGrid'
 import { ContentFilters } from './ContentFilters'
 import { UploadQueue } from './UploadQueue'
-import { ContentUploadZone } from './ContentUploadZone'
 import { StorageProviderSelect } from './StorageProviderSelect'
 import { Button } from '@/components/ui/button'
 import Icon from '@/components/ui/icon'
@@ -31,6 +30,7 @@ export function ContentManager() {
   } = useContentStore()
 
   const [previewItem, setPreviewItem] = useState<ContentItem | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     loadContent()
@@ -42,11 +42,33 @@ export function ContentManager() {
     }
   }
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    if (files.length > 0) {
+      handleUpload(files)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
+
   return (
-    <div className="flex h-full flex-col gap-6 p-6">
+    <div className="flex h-full flex-col gap-6 overflow-hidden p-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-semibold">Content Manager</h2>
-        <StorageProviderSelect value={provider} onChange={setProvider} />
+        <div className="flex items-center gap-3">
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            accept="image/*,video/*,application/pdf,.doc,.docx,.xls,.xlsx,.txt,.csv"
+            onChange={handleFileSelect}
+            className="hidden"
+          />
+          <Button onClick={() => fileInputRef.current?.click()}>
+            <Icon type="upload" size="sm" className="mr-2" />
+            Upload Files
+          </Button>
+          <StorageProviderSelect value={provider} onChange={setProvider} />
+        </div>
       </div>
 
       {error && (
@@ -64,8 +86,6 @@ export function ContentManager() {
         </motion.div>
       )}
 
-      <ContentUploadZone onUpload={handleUpload} />
-
       <ContentFilters filter={filter} onChange={setFilter} />
 
       {loading && items.length === 0 ? (
@@ -79,14 +99,14 @@ export function ContentManager() {
           </p>
         </div>
       ) : (
-        <div className="flex-1 space-y-6">
+        <div className="flex-1 space-y-6 overflow-y-auto">
           <ContentGrid
             items={items}
             onDelete={deleteItem}
             onPreview={setPreviewItem}
           />
           {nextPageToken && (
-            <div className="flex justify-center">
+            <div className="flex justify-center pb-6">
               <Button onClick={loadMore} disabled={loading} variant="outline">
                 {loading ? (
                   <>
