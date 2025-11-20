@@ -54,21 +54,7 @@ export function ContentManager() {
     <div className="flex h-full flex-col gap-6 overflow-hidden p-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-semibold">Content Manager</h2>
-        <div className="flex items-center gap-3">
-          <input
-            ref={fileInputRef}
-            type="file"
-            multiple
-            accept="image/*,video/*,application/pdf,.doc,.docx,.xls,.xlsx,.txt,.csv"
-            onChange={handleFileSelect}
-            className="hidden"
-          />
-          <Button onClick={() => fileInputRef.current?.click()}>
-            <Icon type="upload" size="sm" className="mr-2" />
-            Upload Files
-          </Button>
-          <StorageProviderSelect value={provider} onChange={setProvider} />
-        </div>
+        <StorageProviderSelect value={provider} onChange={setProvider} />
       </div>
 
       {error && (
@@ -86,7 +72,21 @@ export function ContentManager() {
         </motion.div>
       )}
 
-      <ContentFilters filter={filter} onChange={setFilter} />
+      <div className="flex items-center gap-3">
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          accept="image/*,video/*,application/pdf,.doc,.docx,.xls,.xlsx,.txt,.csv"
+          onChange={handleFileSelect}
+          className="hidden"
+        />
+        <Button onClick={() => fileInputRef.current?.click()} size="sm">
+          <Icon type="upload" size="sm" className="mr-2" />
+          Upload
+        </Button>
+        <ContentFilters filter={filter} onChange={setFilter} />
+      </div>
 
       {loading && items.length === 0 ? (
         <div className="flex flex-1 items-center justify-center">

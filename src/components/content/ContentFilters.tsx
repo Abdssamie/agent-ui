@@ -17,9 +17,9 @@ interface ContentFiltersProps {
 
 export function ContentFilters({ filter, onChange }: ContentFiltersProps) {
   return (
-    <div className="flex gap-4">
+    <div className="flex flex-1 gap-2">
       <Input
-        placeholder="Search files..."
+        placeholder="Search..."
         value={filter.search || ''}
         onChange={(e) => onChange({ ...filter, search: e.target.value })}
         className="max-w-xs"
@@ -33,15 +33,15 @@ export function ContentFilters({ filter, onChange }: ContentFiltersProps) {
           })
         }
       >
-        <SelectTrigger className="w-40">
+        <SelectTrigger className="w-32">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="all">All Types</SelectItem>
+          <SelectItem value="all">All</SelectItem>
           <SelectItem value="pdf">PDF</SelectItem>
           <SelectItem value="image">Images</SelectItem>
           <SelectItem value="video">Videos</SelectItem>
-          <SelectItem value="document">Documents</SelectItem>
+          <SelectItem value="document">Docs</SelectItem>
         </SelectContent>
       </Select>
       <Select
@@ -50,13 +50,30 @@ export function ContentFilters({ filter, onChange }: ContentFiltersProps) {
           onChange({ ...filter, sortBy: value as ContentFilter['sortBy'] })
         }
       >
-        <SelectTrigger className="w-40">
+        <SelectTrigger className="w-32">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="date">Date</SelectItem>
           <SelectItem value="name">Name</SelectItem>
           <SelectItem value="size">Size</SelectItem>
+        </SelectContent>
+      </Select>
+      <Select
+        value={filter.sortOrder || 'desc'}
+        onValueChange={(value) =>
+          onChange({
+            ...filter,
+            sortOrder: value as ContentFilter['sortOrder'],
+          })
+        }
+      >
+        <SelectTrigger className="w-24">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="asc">↑ Asc</SelectItem>
+          <SelectItem value="desc">↓ Desc</SelectItem>
         </SelectContent>
       </Select>
     </div>
