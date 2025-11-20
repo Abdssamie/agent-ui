@@ -7,9 +7,11 @@ import { ContentGrid } from './ContentGrid'
 import { ContentFilters } from './ContentFilters'
 import { UploadQueue } from './UploadQueue'
 import { StorageProviderSelect } from './StorageProviderSelect'
+import { ContentPreviewDialog } from './ContentPreviewDialog'
 import { Button } from '@/components/ui/button'
 import Icon from '@/components/ui/icon'
 import { ContentItem } from '@/types/content'
+import { getContentUrlAPI } from '@/api/content'
 
 export function ContentManager() {
   const {
@@ -31,6 +33,7 @@ export function ContentManager() {
   } = useContentStore()
 
   const [previewItem, setPreviewItem] = useState<ContentItem | null>(null)
+  const [dialogOpen, setDialogOpen] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -48,6 +51,25 @@ export function ContentManager() {
     if (files.length > 0) {
       handleUpload(files)
       if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
+
+  const handlePreview = async (item: ContentItem) => {
+    try {
+      const url = await getContentUrlAPI(item.id, provider)
+      setPreviewItem({ ...item, url })
+      setDialogOpen(true)
+    } catch (error) {
+      console.error('Failed to get URL:', error)
+    }
+  }
+
+  const handleDownload = async (item: ContentItem) => {
+    if (item.url) {
+      const a = document.createElement('a')
+      a.href = item.url
+      a.download = item.name
+      a.click()
     }
   }
 
@@ -115,11 +137,7 @@ export function ContentManager() {
         </div>
       ) : (
         <div className="flex-1 space-y-4 overflow-y-auto rounded-xl border p-4">
-          <ContentGrid
-            items={items}
-            onDelete={deleteItem}
-            onPreview={setPreviewItem}
-          />
+          <ContentGrid items={items} onPreview={handlePreview} />
           <div className="flex items-center justify-center gap-2">
             <Button
               onClick={() => goToPage(currentPage - 1)}
@@ -143,6 +161,14 @@ export function ContentManager() {
           </div>
         </div>
       )}
+
+      <ContentPreviewDialog
+        item={previewItem}
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        onDelete={deleteItem}
+        onDownload={handleDownload}
+      />
 
       <UploadQueue uploads={uploads} />
     </div>
