@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { motion } from 'framer-motion'
 import { useContentStore } from '@/stores/contentStore'
 import { ContentGrid } from './ContentGrid'
 import { ContentFilters } from './ContentFilters'
@@ -8,7 +9,7 @@ import { UploadQueue } from './UploadQueue'
 import { ContentUploadZone } from './ContentUploadZone'
 import { StorageProviderSelect } from './StorageProviderSelect'
 import { Button } from '@/components/ui/button'
-import { Loader2 } from 'lucide-react'
+import Icon from '@/components/ui/icon'
 import { ContentItem } from '@/types/content'
 
 export function ContentManager() {
@@ -42,24 +43,25 @@ export function ContentManager() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="flex h-full flex-col gap-6 p-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Content Manager</h2>
+        <h2 className="text-2xl font-semibold">Content Manager</h2>
         <StorageProviderSelect value={provider} onChange={setProvider} />
       </div>
 
       {error && (
-        <div className="rounded-lg border border-destructive bg-destructive/10 p-4">
-          <p className="text-sm text-destructive">{error}</p>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={clearError}
-            className="mt-2"
-          >
-            Dismiss
-          </Button>
-        </div>
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="rounded-xl border border-destructive/50 bg-destructive/10 p-4"
+        >
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-destructive">{error}</p>
+            <Button variant="ghost" size="sm" onClick={clearError}>
+              <Icon type="x" size="sm" />
+            </Button>
+          </div>
+        </motion.div>
       )}
 
       <ContentUploadZone onUpload={handleUpload} />
@@ -67,15 +69,17 @@ export function ContentManager() {
       <ContentFilters filter={filter} onChange={setFilter} />
 
       {loading && items.length === 0 ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <div className="flex flex-1 items-center justify-center">
+          <Icon type="loader" size="lg" className="animate-spin text-muted-foreground" />
         </div>
       ) : items.length === 0 ? (
-        <div className="py-12 text-center text-muted-foreground">
-          No content found. Upload files to get started.
+        <div className="flex flex-1 items-center justify-center">
+          <p className="text-muted-foreground">
+            No content found. Upload files to get started.
+          </p>
         </div>
       ) : (
-        <>
+        <div className="flex-1 space-y-6">
           <ContentGrid
             items={items}
             onDelete={deleteItem}
@@ -83,10 +87,10 @@ export function ContentManager() {
           />
           {nextPageToken && (
             <div className="flex justify-center">
-              <Button onClick={loadMore} disabled={loading}>
+              <Button onClick={loadMore} disabled={loading} variant="outline">
                 {loading ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Icon type="loader" size="sm" className="mr-2 animate-spin" />
                     Loading...
                   </>
                 ) : (
@@ -95,7 +99,7 @@ export function ContentManager() {
               </Button>
             </div>
           )}
-        </>
+        </div>
       )}
 
       <UploadQueue uploads={uploads} />
