@@ -10,9 +10,6 @@ import Icon from '@/components/ui/icon'
 import ImageAttachmentPreview from './ImageAttachmentPreview'
 import { useImageAttachment } from '@/hooks/useImageAttachment'
 import { FILE_VALIDATION } from '@/lib/fileValidation'
-import VoiceInputButton from './VoiceInputButton'
-import VoiceActivityIndicator from './VoiceActivityIndicator'
-import { useVoiceCommands, createOPCVoiceCommands } from '@/hooks/useVoiceCommands'
 
 const ChatInput = () => {
   const { chatInputRef } = useStore()
@@ -23,36 +20,10 @@ const ChatInput = () => {
   const [teamId] = useQueryState('team')
   const [, setView] = useQueryState('view')
   const [inputMessage, setInputMessage] = useState('')
-  const [isVoiceListening, setIsVoiceListening] = useState(false)
-  const [voiceInterimText, setVoiceInterimText] = useState('')
   const isStreaming = useStore((state) => state.isStreaming)
 
   // Image attachment state and actions
   const { imageAttachments, addImage, removeImage, clearImages, isProcessing } = useImageAttachment()
-  
-  // Voice commands setup
-  const voiceCommands = createOPCVoiceCommands({
-    onGenerateLeads: (query) => {
-      setInputMessage(`Generate leads for ${query}`)
-      toast.success(`Voice command: Generate leads for ${query}`)
-    },
-    onCreateContent: (topic) => {
-      setInputMessage(`Create content about ${topic}`)
-      toast.success(`Voice command: Create content about ${topic}`)
-    },
-    onResearch: (topic) => {
-      setInputMessage(`Research ${topic}`)
-      toast.success(`Voice command: Research ${topic}`)
-    }
-  })
-
-  const { processTranscript } = useVoiceCommands({
-    commands: voiceCommands,
-    onUnmatchedCommand: (text) => {
-      // If no command matched, just add the text to input
-      setInputMessage(prev => prev + (prev ? ' ' : '') + text)
-    }
-  })
 
   const handleSubmit = async () => {
     if (!inputMessage.trim()) return
@@ -97,17 +68,6 @@ const ChatInput = () => {
     setView('knowledge')
   }
 
-  const handleVoiceTranscript = (transcript: string) => {
-    // Try to process as a voice command first
-    const wasCommand = processTranscript(transcript)
-    
-    // Auto-focus the input after voice input
-    chatInputRef.current?.focus()
-    
-    // If it was a command and the input is now filled, optionally auto-submit
-    // (disabled by default for safety - user can press Enter to confirm)
-  }
-
   const handleImageSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files
     if (!files || files.length === 0) {
@@ -141,12 +101,6 @@ const ChatInput = () => {
           <span>Processing files...</span>
         </div>
       )}
-
-      {/* Voice Activity Indicator */}
-      <VoiceActivityIndicator
-        isListening={isVoiceListening}
-        transcript={voiceInterimText}
-      />
 
       {/* File Attachment Preview - for images and documents that will be sent with message */}
       <ImageAttachmentPreview
@@ -182,14 +136,6 @@ const ChatInput = () => {
         >
           <Icon type="database" color="primary" />
         </Button>
-
-        {/* Voice Input button */}
-        <VoiceInputButton
-          onTranscript={handleVoiceTranscript}
-          onListeningChange={setIsVoiceListening}
-          onInterimTranscript={setVoiceInterimText}
-          disabled={!(selectedAgent || teamId) || isStreaming || isProcessing}
-        />
 
         {/* File Attachment button */}
         <Button
