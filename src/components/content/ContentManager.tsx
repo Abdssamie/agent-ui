@@ -100,7 +100,7 @@ export function ContentManager() {
   }
 
   const handleDownload = (item: ContentItem) => {
-    const url = `/api/content/download?id=${encodeURIComponent(item.id)}&name=${encodeURIComponent(item.name)}`
+    const url = `/api/content/download?id=${encodeURIComponent(item.id)}&name=${encodeURIComponent(item.name)}&provider=${provider}`
     const a = document.createElement('a')
     a.href = url
     a.download = item.name

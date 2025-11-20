@@ -62,11 +62,11 @@ export function ContentPreviewDialog({
                 </div>
               )}
               {item.type === 'video' && item.url && (
-                <div className="overflow-hidden rounded-lg border bg-black">
+                <div className="flex max-h-[60vh] items-center justify-center overflow-hidden rounded-lg border bg-black">
                   <video
                     src={item.url}
                     controls
-                    className="w-full"
+                    className="max-h-[60vh] w-full object-contain"
                     preload="metadata"
                   >
                     Your browser does not support video playback.

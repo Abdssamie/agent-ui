@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3'
+import { Readable } from 'stream'
 
 const client = new S3Client({
   region: 'auto',
@@ -19,6 +20,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Missing parameters' }, { status: 400 })
   }
 
+  // TODO: Fix video download corruption issue - some videos download corrupted
+  // Possible causes: stream conversion, large file handling, or specific codecs
+  // Consider: direct signed URL download or chunked streaming approach
+  
   try {
     const command = new GetObjectCommand({
       Bucket: process.env.NEXT_PUBLIC_R2_BUCKET!,
@@ -26,13 +31,16 @@ export async function GET(request: NextRequest) {
     })
 
     const response = await client.send(command)
-    const body = await response.Body?.transformToByteArray()
 
-    if (!body) {
+    if (!response.Body) {
       return NextResponse.json({ error: 'No content' }, { status: 404 })
     }
 
-    return new NextResponse(body, {
+    // Convert SDK stream to web stream
+    const nodeStream = response.Body as Readable
+    const webStream = Readable.toWeb(nodeStream) as ReadableStream
+
+    return new NextResponse(webStream, {
       headers: {
         'Content-Type': response.ContentType || 'application/octet-stream',
         'Content-Disposition': `attachment; filename="${name}"`,
