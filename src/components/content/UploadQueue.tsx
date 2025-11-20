@@ -18,16 +18,18 @@ export function UploadQueue({ uploads }: UploadQueueProps) {
           className="rounded-lg border bg-background p-4 shadow-lg"
         >
           <div className="flex items-center gap-3">
-            {upload.status === 'uploading' && (
-              <Loader2 className="h-5 w-5 animate-spin text-primary" />
-            )}
-            {upload.status === 'success' && (
-              <CheckCircle2 className="h-5 w-5 text-green-500" />
-            )}
-            {upload.status === 'error' && (
-              <XCircle className="h-5 w-5 text-destructive" />
-            )}
-            <div className="flex-1">
+            <div className="flex-shrink-0">
+              {upload.status === 'uploading' && (
+                <Loader2 className="h-5 w-5 animate-spin text-primary" />
+              )}
+              {upload.status === 'success' && (
+                <CheckCircle2 className="h-5 w-5 text-green-500" />
+              )}
+              {upload.status === 'error' && (
+                <XCircle className="h-5 w-5 text-destructive" />
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium">{upload.name}</p>
               {upload.status === 'uploading' && (
                 <div className="mt-1 h-1 overflow-hidden rounded-full bg-muted">
