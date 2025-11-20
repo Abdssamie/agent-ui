@@ -64,14 +64,11 @@ export function ContentManager() {
     }
   }
 
-  const handleDownload = async (item: ContentItem) => {
-    if (!item.url) return
-    
+  const handleDownload = (item: ContentItem) => {
+    const url = `/api/content/download?id=${encodeURIComponent(item.id)}&name=${encodeURIComponent(item.name)}`
     const a = document.createElement('a')
-    a.href = item.url
+    a.href = url
     a.download = item.name
-    a.target = '_blank'
-    a.rel = 'noopener noreferrer'
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
