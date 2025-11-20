@@ -54,10 +54,21 @@ export const useContentStore = create<ContentState>((set, get) => ({
   loadContent: async () => {
     set({ loading: true, error: null })
     try {
-      const { provider } = get()
-      const response = await listContentAPI(provider, { limit: 50 })
+      const { provider, filter } = get()
+      const response = await listContentAPI(provider, { 
+        limit: 50,
+        filter: filter.search ? { search: filter.search } : undefined
+      })
+      
+      // Client-side search filter
+      let items = response.items
+      if (filter.search) {
+        const search = filter.search.toLowerCase()
+        items = items.filter(item => item.name.toLowerCase().includes(search))
+      }
+      
       set({
-        items: response.items,
+        items,
         hasNextPage: !!response.nextPageToken,
         pageTokens: ['', response.nextPageToken || ''],
         currentPage: 1,
@@ -72,7 +83,7 @@ export const useContentStore = create<ContentState>((set, get) => ({
   },
 
   goToPage: async (page) => {
-    const { provider, pageTokens, currentPage } = get()
+    const { provider, pageTokens, currentPage, filter } = get()
     if (page === currentPage) return
 
     set({ loading: true })
@@ -83,13 +94,20 @@ export const useContentStore = create<ContentState>((set, get) => ({
         limit: 50,
       })
 
+      // Client-side search filter
+      let items = response.items
+      if (filter.search) {
+        const search = filter.search.toLowerCase()
+        items = items.filter(item => item.name.toLowerCase().includes(search))
+      }
+
       const newPageTokens = [...pageTokens]
       if (response.nextPageToken && !newPageTokens[page]) {
         newPageTokens[page] = response.nextPageToken
       }
 
       set({
-        items: response.items,
+        items,
         hasNextPage: !!response.nextPageToken,
         pageTokens: newPageTokens,
         currentPage: page,
