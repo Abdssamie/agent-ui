@@ -93,6 +93,7 @@ export function ContentManager() {
         <ContentFilters
           filter={filter}
           onChange={setFilter}
+          loading={loading}
           uploadButton={
             <Button onClick={() => fileInputRef.current?.click()} variant="outline">
               <Icon type="upload" size="sm" className="mr-2" />
