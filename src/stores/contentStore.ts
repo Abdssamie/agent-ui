@@ -61,8 +61,8 @@ export const useContentStore = create<ContentState>((set, get) => ({
         let allItems: ContentItem[] = []
         let continuationToken: string | undefined = undefined
         
-        // Fetch all items (max 500 for safety)
-        while (allItems.length < 500) {
+        // Fetch all items (max 1000)
+        while (allItems.length < 1000) {
           const response = await listContentAPI(provider, { 
             limit: 100,
             pageToken: continuationToken
