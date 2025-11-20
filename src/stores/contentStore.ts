@@ -57,8 +57,8 @@ export const useContentStore = create<ContentState>((set, get) => ({
     try {
       const { provider, filter } = get()
       
-      // If searching, load all items
-      if (filter.search) {
+      // If searching or filtering by type, load all items
+      if (filter.search || filter.type) {
         let allItems: ContentItem[] = []
         let continuationToken: string | undefined = undefined
         
@@ -75,9 +75,17 @@ export const useContentStore = create<ContentState>((set, get) => ({
           continuationToken = response.nextPageToken
         }
         
-        // Filter by search
-        const search = filter.search.toLowerCase()
-        const filtered = allItems.filter(item => item.name.toLowerCase().includes(search))
+        // Apply filters
+        let filtered = allItems
+        
+        if (filter.type) {
+          filtered = filtered.filter(item => item.type === filter.type)
+        }
+        
+        if (filter.search) {
+          const search = filter.search.toLowerCase()
+          filtered = filtered.filter(item => item.name.toLowerCase().includes(search))
+        }
         
         set({
           items: filtered,
