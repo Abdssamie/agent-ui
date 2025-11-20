@@ -85,7 +85,7 @@ export function ContentManager() {
           filter={filter}
           onChange={setFilter}
           uploadButton={
-            <Button onClick={() => fileInputRef.current?.click()}>
+            <Button onClick={() => fileInputRef.current?.click()} variant="outline">
               <Icon type="upload" size="sm" className="mr-2" />
               Upload
             </Button>
