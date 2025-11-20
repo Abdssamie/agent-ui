@@ -52,6 +52,15 @@ export function ContentPreviewDialog({
                   />
                 </div>
               )}
+              {item.type === 'pdf' && item.url && (
+                <div className="h-[60vh] overflow-hidden rounded-lg border">
+                  <iframe
+                    src={item.url}
+                    className="h-full w-full"
+                    title={item.name}
+                  />
+                </div>
+              )}
             </>
           )}
           <div className="space-y-2">

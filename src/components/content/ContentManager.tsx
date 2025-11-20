@@ -46,7 +46,7 @@ export function ContentManager() {
   useEffect(() => {
     const fetchPreviews = async () => {
       for (const item of items) {
-        if (item.type === 'image' && !item.url) {
+        if ((item.type === 'image' || item.type === 'pdf') && !item.url) {
           try {
             const url = await getContentUrlAPI(item.id, provider)
             updateItemUrl(item.id, url)
