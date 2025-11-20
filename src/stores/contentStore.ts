@@ -50,7 +50,7 @@ export const useContentStore = create<ContentState>((set, get) => ({
     set({ loading: true, error: null })
     try {
       const { provider, filter } = get()
-      const response = await listContentAPI(provider, { filter, limit: 50 })
+      const response = await listContentAPI(provider, { filter, limit: 20 })
       set({
         items: response.items,
         nextPageToken: response.nextPageToken,
@@ -73,7 +73,7 @@ export const useContentStore = create<ContentState>((set, get) => ({
       const response = await listContentAPI(provider, {
         filter,
         pageToken: nextPageToken,
-        limit: 50,
+        limit: 20,
       })
       set({
         items: [...items, ...response.items],
