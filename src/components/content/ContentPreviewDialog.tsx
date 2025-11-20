@@ -30,43 +30,43 @@ export function ContentPreviewDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl">{item.name}</DialogTitle>
         </DialogHeader>
-        <div className="space-y-6 p-2">
+        <div className="space-y-4 p-2">
           {item.type === 'image' && item.url && (
-            <div className="overflow-hidden rounded-lg border">
+            <div className="flex max-h-[50vh] items-center justify-center overflow-hidden rounded-lg border bg-muted">
               <img
                 src={item.url}
                 alt={item.name}
-                className="w-full"
+                className="max-h-[50vh] w-full object-contain"
               />
             </div>
           )}
-          <div className="space-y-3">
-            <div className="flex justify-between py-2">
+          <div className="space-y-2">
+            <div className="flex justify-between py-1.5">
               <span className="text-sm text-muted-foreground">Type</span>
               <span className="text-sm font-medium capitalize">{item.type}</span>
             </div>
-            <div className="flex justify-between py-2">
+            <div className="flex justify-between py-1.5">
               <span className="text-sm text-muted-foreground">Size</span>
               <span className="text-sm font-medium">{formatFileSize(item.size)}</span>
             </div>
-            <div className="flex justify-between py-2">
+            <div className="flex justify-between py-1.5">
               <span className="text-sm text-muted-foreground">Uploaded</span>
               <span className="text-sm font-medium">
                 {new Date(item.uploadedAt).toLocaleDateString()}
               </span>
             </div>
             {item.metadata?.mimeType && (
-              <div className="flex justify-between py-2">
+              <div className="flex justify-between py-1.5">
                 <span className="text-sm text-muted-foreground">MIME Type</span>
                 <span className="text-sm font-medium">{item.metadata.mimeType}</span>
               </div>
             )}
           </div>
-          <div className="flex gap-3 pt-2">
+          <div className="flex gap-3 pb-4 pt-2">
             <Button
               onClick={() => onDownload(item)}
               variant="outline"
