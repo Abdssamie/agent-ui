@@ -12,86 +12,55 @@ import {
 } from '@/api/content'
 
 interface ContentState {
-  allItems: ContentItem[]
   items: ContentItem[]
   loading: boolean
   error: string | null
   provider: StorageProvider
   filter: ContentFilter
-  nextPageToken?: string
+  currentPage: number
+  pageTokens: string[]
+  hasNextPage: boolean
   uploads: UploadProgress[]
   setProvider: (provider: StorageProvider) => void
   setFilter: (filter: ContentFilter) => void
   loadContent: () => Promise<void>
-  loadMore: () => Promise<void>
+  goToPage: (page: number) => Promise<void>
   uploadFile: (file: File) => Promise<void>
   deleteItem: (id: string) => Promise<void>
   clearError: () => void
 }
 
-function applyFilters(items: ContentItem[], filter: ContentFilter): ContentItem[] {
-  let filtered = [...items]
-
-  if (filter.type) {
-    filtered = filtered.filter((item) => item.type === filter.type)
-  }
-
-  if (filter.search) {
-    const search = filter.search.toLowerCase()
-    filtered = filtered.filter((item) => item.name.toLowerCase().includes(search))
-  }
-
-  if (filter.sortBy) {
-    filtered.sort((a, b) => {
-      let comparison = 0
-      switch (filter.sortBy) {
-        case 'name':
-          comparison = a.name.localeCompare(b.name)
-          break
-        case 'date':
-          comparison = new Date(a.uploadedAt).getTime() - new Date(b.uploadedAt).getTime()
-          break
-        case 'size':
-          comparison = a.size - b.size
-          break
-      }
-      return filter.sortOrder === 'desc' ? -comparison : comparison
-    })
-  }
-
-  return filtered
-}
-
 export const useContentStore = create<ContentState>((set, get) => ({
-  allItems: [],
   items: [],
   loading: false,
   error: null,
   provider: 's3',
   filter: {},
+  currentPage: 1,
+  pageTokens: [''],
+  hasNextPage: false,
   uploads: [],
 
   setProvider: (provider) => {
-    set({ provider, allItems: [], items: [], nextPageToken: undefined })
+    set({ provider, items: [], currentPage: 1, pageTokens: [''], hasNextPage: false })
     get().loadContent()
   },
 
   setFilter: (filter) => {
-    const { allItems } = get()
-    const filtered = applyFilters(allItems, filter)
-    set({ filter, items: filtered })
+    set({ filter, currentPage: 1, pageTokens: [''], hasNextPage: false })
+    get().loadContent()
   },
 
   loadContent: async () => {
     set({ loading: true, error: null })
     try {
-      const { provider, filter } = get()
-      const response = await listContentAPI(provider, { limit: 20 })
-      const filtered = applyFilters(response.items, filter)
+      const { provider } = get()
+      const response = await listContentAPI(provider, { limit: 50 })
       set({
-        allItems: response.items,
-        items: filtered,
-        nextPageToken: response.nextPageToken,
+        items: response.items,
+        hasNextPage: !!response.nextPageToken,
+        pageTokens: ['', response.nextPageToken || ''],
+        currentPage: 1,
         loading: false,
       })
     } catch (error) {
@@ -102,27 +71,33 @@ export const useContentStore = create<ContentState>((set, get) => ({
     }
   },
 
-  loadMore: async () => {
-    const { nextPageToken, provider, filter, allItems } = get()
-    if (!nextPageToken) return
+  goToPage: async (page) => {
+    const { provider, pageTokens, currentPage } = get()
+    if (page === currentPage) return
 
     set({ loading: true })
     try {
+      const pageToken = pageTokens[page - 1]
       const response = await listContentAPI(provider, {
-        pageToken: nextPageToken,
-        limit: 20,
+        pageToken: pageToken || undefined,
+        limit: 50,
       })
-      const newAllItems = [...allItems, ...response.items]
-      const filtered = applyFilters(newAllItems, filter)
+
+      const newPageTokens = [...pageTokens]
+      if (response.nextPageToken && !newPageTokens[page]) {
+        newPageTokens[page] = response.nextPageToken
+      }
+
       set({
-        allItems: newAllItems,
-        items: filtered,
-        nextPageToken: response.nextPageToken,
+        items: response.items,
+        hasNextPage: !!response.nextPageToken,
+        pageTokens: newPageTokens,
+        currentPage: page,
         loading: false,
       })
     } catch (error) {
       set({
-        error: error instanceof Error ? error.message : 'Failed to load more',
+        error: error instanceof Error ? error.message : 'Failed to load page',
         loading: false,
       })
     }
@@ -130,7 +105,7 @@ export const useContentStore = create<ContentState>((set, get) => ({
 
   uploadFile: async (file) => {
     const uploadId = `${Date.now()}-${file.name}`
-    const { provider, filter, allItems } = get()
+    const { provider } = get()
 
     set((state) => ({
       uploads: [
@@ -140,7 +115,7 @@ export const useContentStore = create<ContentState>((set, get) => ({
     }))
 
     try {
-      const item = await uploadContentAPI(file, provider, (progress) => {
+      await uploadContentAPI(file, provider, (progress) => {
         set((state) => ({
           uploads: state.uploads.map((u) =>
             u.id === uploadId ? { ...u, progress } : u
@@ -148,12 +123,7 @@ export const useContentStore = create<ContentState>((set, get) => ({
         }))
       })
 
-      const newAllItems = [item, ...allItems]
-      const filtered = applyFilters(newAllItems, filter)
-
       set((state) => ({
-        allItems: newAllItems,
-        items: filtered,
         uploads: state.uploads.map((u) =>
           u.id === uploadId ? { ...u, status: 'success', progress: 100 } : u
         ),
@@ -163,6 +133,7 @@ export const useContentStore = create<ContentState>((set, get) => ({
         set((state) => ({
           uploads: state.uploads.filter((u) => u.id !== uploadId),
         }))
+        get().loadContent()
       }, 2000)
     } catch (error) {
       set((state) => ({
@@ -181,15 +152,10 @@ export const useContentStore = create<ContentState>((set, get) => ({
   },
 
   deleteItem: async (id) => {
-    const { provider, filter, allItems } = get()
+    const { provider } = get()
     try {
       await deleteContentAPI(id, provider)
-      const newAllItems = allItems.filter((item) => item.id !== id)
-      const filtered = applyFilters(newAllItems, filter)
-      set({
-        allItems: newAllItems,
-        items: filtered,
-      })
+      get().loadContent()
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : 'Failed to delete',

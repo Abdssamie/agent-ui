@@ -18,12 +18,13 @@ export function ContentManager() {
     error,
     provider,
     filter,
-    nextPageToken,
+    currentPage,
+    hasNextPage,
     uploads,
     setProvider,
     setFilter,
     loadContent,
-    loadMore,
+    goToPage,
     uploadFile,
     deleteItem,
     clearError,
@@ -110,20 +111,27 @@ export function ContentManager() {
             onDelete={deleteItem}
             onPreview={setPreviewItem}
           />
-          {nextPageToken && (
-            <div className="flex justify-center">
-              <Button onClick={loadMore} disabled={loading} variant="outline">
-                {loading ? (
-                  <>
-                    <Icon type="loader" size="sm" className="mr-2 animate-spin" />
-                    Loading...
-                  </>
-                ) : (
-                  'Load More'
-                )}
-              </Button>
-            </div>
-          )}
+          <div className="flex items-center justify-center gap-2">
+            <Button
+              onClick={() => goToPage(currentPage - 1)}
+              disabled={currentPage === 1 || loading}
+              variant="outline"
+              size="sm"
+            >
+              ←
+            </Button>
+            <span className="text-sm text-muted-foreground">
+              Page {currentPage}
+            </span>
+            <Button
+              onClick={() => goToPage(currentPage + 1)}
+              disabled={!hasNextPage || loading}
+              variant="outline"
+              size="sm"
+            >
+              →
+            </Button>
+          </div>
         </div>
       )}
 

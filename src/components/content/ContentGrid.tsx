@@ -13,7 +13,7 @@ interface ContentGridProps {
 
 export function ContentGrid({ items, onDelete, onPreview }: ContentGridProps) {
   return (
-    <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+    <div className="grid grid-cols-3 gap-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8">
       {items.map((item) => (
         <div
           key={item.id}
@@ -29,12 +29,12 @@ export function ContentGrid({ items, onDelete, onPreview }: ContentGridProps) {
               />
             ) : (
               <div className="flex h-full items-center justify-center">
-                <FileIcon className="h-16 w-16 text-muted-foreground" />
+                <FileIcon className="h-8 w-8 text-muted-foreground" />
               </div>
             )}
           </div>
-          <div className="p-3">
-            <p className="truncate text-sm font-medium">{item.name}</p>
+          <div className="p-2">
+            <p className="truncate text-xs font-medium">{item.name}</p>
             <p className="text-xs text-muted-foreground">
               {formatFileSize(item.size)}
             </p>
@@ -42,13 +42,13 @@ export function ContentGrid({ items, onDelete, onPreview }: ContentGridProps) {
           <Button
             variant="destructive"
             size="icon"
-            className="absolute right-2 top-2 opacity-0 transition-opacity group-hover:opacity-100"
+            className="absolute right-1 top-1 h-6 w-6 opacity-0 transition-opacity group-hover:opacity-100"
             onClick={(e) => {
               e.stopPropagation()
               onDelete(item.id)
             }}
           >
-            <Trash2 className="h-4 w-4" />
+            <Trash2 className="h-3 w-3" />
           </Button>
         </div>
       ))}
