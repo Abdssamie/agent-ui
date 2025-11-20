@@ -18,7 +18,7 @@ interface ContentFiltersProps {
 
 export function ContentFilters({ filter, onChange, uploadButton }: ContentFiltersProps) {
   return (
-    <div className="flex items-center justify-between gap-3">
+    <div className="flex w-full items-center justify-between gap-3">
       <div className="flex items-center gap-2">
         {uploadButton}
         <Input

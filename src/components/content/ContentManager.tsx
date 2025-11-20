@@ -72,7 +72,7 @@ export function ContentManager() {
         </motion.div>
       )}
 
-      <div className="flex items-center gap-3">
+      <div className="flex w-full items-center gap-3">
         <input
           ref={fileInputRef}
           type="file"
