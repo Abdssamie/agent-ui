@@ -75,7 +75,6 @@ export function ContentManager() {
     if (items.length > 0) {
       fetchPreviews()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [provider, updateItemUrl, items])
 
   const handleUpload = async (files: File[]) => {

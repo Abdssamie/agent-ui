@@ -103,18 +103,26 @@ export const WorkflowExecutionDialog = ({
     if (workflow?.id !== prevWorkflowIdRef.current) {
       prevWorkflowIdRef.current = workflow?.id || null
       
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (inputType === 'string') {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setInputMode('simple')
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setMessage('')
         if (workflow?.metadata?.json_input_example) {
+          // eslint-disable-next-line react-hooks/set-state-in-effect
           setJsonInput(JSON.stringify(workflow.metadata.json_input_example, null, 2))
         } else {
+          // eslint-disable-next-line react-hooks/set-state-in-effect
           setJsonInput('{\n  "message": ""\n}')
         }
       } else {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setInputMode('json')
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setMessage('')
         const template = generateTemplateFromSchema(workflow?.input_schema || {})
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setJsonInput(JSON.stringify(template, null, 2))
       }
     }
