@@ -25,6 +25,11 @@ export function ContentGrid({ items, onPreview }: ContentGridProps) {
                 alt={item.name}
                 className="h-full w-full object-cover"
               />
+            ) : item.type === 'pdf' ? (
+              <div className="flex h-full flex-col items-center justify-center gap-2 bg-red-500/10">
+                <FileIcon className="h-8 w-8 text-red-500" />
+                <span className="text-xs font-medium text-red-500">PDF</span>
+              </div>
             ) : (
               <div className="flex h-full items-center justify-center">
                 <FileIcon className="h-8 w-8 text-muted-foreground" />
