@@ -59,7 +59,7 @@ export function ContentManager() {
           <div className="group relative">
             <Icon type="info" size="xs" className="text-muted-foreground" />
             <div className="absolute left-0 top-6 z-50 hidden w-64 rounded-lg border bg-background p-2 text-xs shadow-md group-hover:block">
-              The app supports only a max of 1000 objects sent at once
+              Search loads up to 1000 items. For larger buckets, use pagination without search.
             </div>
           </div>
         </div>
