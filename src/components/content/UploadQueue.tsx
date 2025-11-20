@@ -15,7 +15,7 @@ export function UploadQueue({ uploads }: UploadQueueProps) {
       {uploads.map((upload) => (
         <div
           key={upload.id}
-          className="rounded-lg border bg-card p-4 shadow-lg"
+          className="rounded-lg border bg-background p-4 shadow-lg"
         >
           <div className="flex items-center gap-3">
             {upload.status === 'uploading' && (

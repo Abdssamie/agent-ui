@@ -58,7 +58,7 @@ export function ContentManager() {
           <h2 className="text-2xl font-semibold">Content Manager</h2>
           <div className="group relative">
             <Icon type="info" size="xs" className="text-muted-foreground" />
-            <div className="absolute left-0 top-6 z-50 hidden w-64 rounded-lg border bg-popover p-2 text-xs text-popover-foreground shadow-md group-hover:block">
+            <div className="absolute left-0 top-6 z-50 hidden w-64 rounded-lg border bg-background p-2 text-xs shadow-md group-hover:block">
               The app supports only a max of 1000 objects sent at once
             </div>
           </div>
