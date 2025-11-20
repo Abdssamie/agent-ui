@@ -32,39 +32,41 @@ export function ContentPreviewDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>{item.name}</DialogTitle>
+          <DialogTitle className="text-xl">{item.name}</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4">
+        <div className="space-y-6 p-2">
           {item.type === 'image' && item.url && (
-            <img
-              src={item.url}
-              alt={item.name}
-              className="w-full rounded-lg"
-            />
+            <div className="overflow-hidden rounded-lg border">
+              <img
+                src={item.url}
+                alt={item.name}
+                className="w-full"
+              />
+            </div>
           )}
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Type:</span>
-              <span className="font-medium">{item.type}</span>
+          <div className="space-y-3">
+            <div className="flex justify-between py-2">
+              <span className="text-sm text-muted-foreground">Type</span>
+              <span className="text-sm font-medium capitalize">{item.type}</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Size:</span>
-              <span className="font-medium">{formatFileSize(item.size)}</span>
+            <div className="flex justify-between py-2">
+              <span className="text-sm text-muted-foreground">Size</span>
+              <span className="text-sm font-medium">{formatFileSize(item.size)}</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Uploaded:</span>
-              <span className="font-medium">
+            <div className="flex justify-between py-2">
+              <span className="text-sm text-muted-foreground">Uploaded</span>
+              <span className="text-sm font-medium">
                 {new Date(item.uploadedAt).toLocaleDateString()}
               </span>
             </div>
             {item.metadata?.mimeType && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">MIME Type:</span>
-                <span className="font-medium">{item.metadata.mimeType}</span>
+              <div className="flex justify-between py-2">
+                <span className="text-sm text-muted-foreground">MIME Type</span>
+                <span className="text-sm font-medium">{item.metadata.mimeType}</span>
               </div>
             )}
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-3 pt-2">
             <Button
               onClick={() => onDownload(item)}
               variant="outline"
