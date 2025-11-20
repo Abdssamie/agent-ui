@@ -1,12 +1,4 @@
 import {
-  S3Client,
-  ListObjectsV2Command,
-  PutObjectCommand,
-  DeleteObjectCommand,
-  GetObjectCommand,
-} from '@aws-sdk/client-s3'
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
-import {
   StorageStrategy,
   ContentItem,
   ContentListResponse,
@@ -15,69 +7,33 @@ import {
 import { getContentType, validateFile as validateFileUtil } from './validation'
 
 export class S3Strategy implements StorageStrategy {
-  private client: S3Client | null = null
-  private bucket: string
-
-  constructor() {
-    this.bucket = process.env.NEXT_PUBLIC_R2_BUCKET || ''
-    this.initClient()
-  }
-
-  private initClient() {
-    const accountId = process.env.NEXT_PUBLIC_R2_ACCOUNT_ID
-    const accessKeyId = process.env.NEXT_PUBLIC_R2_ACCESS_KEY_ID
-    const secretAccessKey = process.env.NEXT_PUBLIC_R2_SECRET_ACCESS_KEY
-
-    if (!accountId || !accessKeyId || !secretAccessKey) {
-      console.warn('S3/R2 credentials not configured')
-      return
-    }
-
-    this.client = new S3Client({
-      region: 'auto',
-      endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
-      credentials: {
-        accessKeyId,
-        secretAccessKey,
-      },
-    })
-  }
-
   async list(options?: {
     pageToken?: string
     limit?: number
     filter?: ContentFilter
   }): Promise<ContentListResponse> {
-    if (!this.client) {
-      throw new Error('S3 client not initialized. Please configure credentials.')
-    }
+    const params = new URLSearchParams()
+    if (options?.pageToken) params.set('pageToken', options.pageToken)
+    if (options?.limit) params.set('limit', options.limit.toString())
 
-    const command = new ListObjectsV2Command({
-      Bucket: this.bucket,
-      MaxKeys: options?.limit || 50,
-      ContinuationToken: options?.pageToken,
-    })
+    const response = await fetch(`/api/content/list?${params}`)
+    if (!response.ok) throw new Error('Failed to list content')
 
-    const response = await this.client.send(command)
+    const data = await response.json()
 
-    const items: ContentItem[] = (response.Contents || []).map((obj) => ({
-      id: obj.Key!,
-      name: obj.Key!.split('/').pop() || obj.Key!,
-      type: getContentType(this.getMimeType(obj.Key!)),
-      size: obj.Size || 0,
+    const items: ContentItem[] = data.items.map((item: any) => ({
+      ...item,
+      type: getContentType(this.getMimeType(item.id)),
       storageProvider: 's3' as const,
-      uploadedAt: obj.LastModified?.toISOString() || new Date().toISOString(),
-      metadata: {
-        mimeType: this.getMimeType(obj.Key!),
-      },
+      metadata: { mimeType: this.getMimeType(item.id) },
     }))
 
     const filtered = this.applyFilters(items, options?.filter)
 
     return {
       items: filtered,
-      nextPageToken: response.NextContinuationToken,
-      totalCount: response.KeyCount,
+      nextPageToken: data.nextPageToken,
+      totalCount: data.totalCount,
     }
   }
 
@@ -85,66 +41,43 @@ export class S3Strategy implements StorageStrategy {
     file: File,
     onProgress?: (progress: number) => void
   ): Promise<ContentItem> {
-    if (!this.client) {
-      throw new Error('S3 client not initialized. Please configure credentials.')
-    }
-
     const validation = await this.validateFile(file)
-    if (!validation.valid) {
-      throw new Error(validation.error)
-    }
+    if (!validation.valid) throw new Error(validation.error)
 
-    const key = `${Date.now()}-${file.name}`
-    const buffer = await file.arrayBuffer()
+    const formData = new FormData()
+    formData.append('file', file)
 
-    const command = new PutObjectCommand({
-      Bucket: this.bucket,
-      Key: key,
-      Body: new Uint8Array(buffer),
-      ContentType: file.type,
+    const response = await fetch('/api/content/upload', {
+      method: 'POST',
+      body: formData,
     })
 
-    await this.client.send(command)
+    if (!response.ok) throw new Error('Failed to upload file')
 
     if (onProgress) onProgress(100)
 
+    const data = await response.json()
     return {
-      id: key,
-      name: file.name,
+      ...data,
       type: getContentType(file.type),
-      size: file.size,
       storageProvider: 's3',
-      uploadedAt: new Date().toISOString(),
-      metadata: {
-        mimeType: file.type,
-      },
     }
   }
 
   async delete(id: string): Promise<void> {
-    if (!this.client) {
-      throw new Error('S3 client not initialized. Please configure credentials.')
-    }
-
-    const command = new DeleteObjectCommand({
-      Bucket: this.bucket,
-      Key: id,
+    const response = await fetch(`/api/content/delete?id=${encodeURIComponent(id)}`, {
+      method: 'DELETE',
     })
 
-    await this.client.send(command)
+    if (!response.ok) throw new Error('Failed to delete file')
   }
 
   async getUrl(id: string): Promise<string> {
-    if (!this.client) {
-      throw new Error('S3 client not initialized. Please configure credentials.')
-    }
+    const response = await fetch(`/api/content/url?id=${encodeURIComponent(id)}`)
+    if (!response.ok) throw new Error('Failed to get URL')
 
-    const command = new GetObjectCommand({
-      Bucket: this.bucket,
-      Key: id,
-    })
-
-    return getSignedUrl(this.client, command, { expiresIn: 3600 })
+    const data = await response.json()
+    return data.url
   }
 
   async validateFile(file: File): Promise<{ valid: boolean; error?: string }> {
