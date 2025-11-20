@@ -203,6 +203,7 @@ export const useContentStore = create<ContentState>((set, get) => ({
       set({
         error: error instanceof Error ? error.message : 'Failed to delete',
       })
+      throw error
     }
   },
 

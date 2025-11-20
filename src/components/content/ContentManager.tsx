@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { useContentStore } from '@/stores/contentStore'
 import { ContentGrid } from './ContentGrid'
@@ -43,24 +43,40 @@ export function ContentManager() {
     loadContent()
   }, [loadContent])
 
+  const itemsKey = useMemo(() => items.map(i => i.id).join(','), [items])
+
   useEffect(() => {
     const fetchPreviews = async () => {
-      for (const item of items) {
-        if ((item.type === 'image' || item.type === 'pdf' || item.type === 'video') && !item.url) {
-          try {
-            const url = await getContentUrlAPI(item.id, provider)
-            updateItemUrl(item.id, url)
-          } catch (error) {
-            console.error('Failed to fetch preview:', error)
-          }
+      const itemsNeedingUrls = items.filter(
+        (item) => (item.type === 'image' || item.type === 'pdf' || item.type === 'video') && !item.url
+      )
+
+      if (itemsNeedingUrls.length === 0) return
+
+      const promises = itemsNeedingUrls.map(async (item) => {
+        try {
+          const url = await getContentUrlAPI(item.id, provider)
+          return { id: item.id, url, success: true }
+        } catch (error) {
+          console.error(`Failed to fetch preview for ${item.id}:`, error)
+          return { id: item.id, url: '', success: false }
         }
-      }
+      })
+
+      const results = await Promise.allSettled(promises)
+      
+      results.forEach((result) => {
+        if (result.status === 'fulfilled' && result.value.success) {
+          updateItemUrl(result.value.id, result.value.url)
+        }
+      })
     }
 
     if (items.length > 0) {
       fetchPreviews()
     }
-  }, [items.length, provider, updateItemUrl])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [provider, updateItemUrl, items])
 
   const handleUpload = async (files: File[]) => {
     for (const file of files) {

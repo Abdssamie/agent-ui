@@ -19,7 +19,7 @@ export function ContentFilters({ filter, onChange, uploadButton, loading }: Cont
   useEffect(() => {
     const timer = setTimeout(() => {
       if (searchValue !== filter.search) {
-        onChange({ search: searchValue || undefined })
+        onChange({ ...filter, search: searchValue || undefined })
       }
     }, 500)
 
