@@ -1,70 +1,59 @@
-// Content Upload Zone Component
+'use client'
+
 import { useCallback } from 'react'
 import { useDropzone } from 'react-dropzone'
-import Icon from '@/components/ui/icon'
-import { cn } from '@/lib/utils'
+import { Upload } from 'lucide-react'
 
 interface ContentUploadZoneProps {
-  onFilesSelected: (files: File[]) => void
-  disabled?: boolean
-  accept?: Record<string, string[]>
+  onUpload: (files: File[]) => void
 }
 
-const DEFAULT_ACCEPT = {
-  'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.webp'],
-  'video/*': ['.mp4', '.webm', '.mov'],
-  'application/pdf': ['.pdf'],
-  'application/msword': ['.doc'],
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx']
-}
-
-export const ContentUploadZone = ({
-  onFilesSelected,
-  disabled = false,
-  accept = DEFAULT_ACCEPT
-}: ContentUploadZoneProps) => {
+export function ContentUploadZone({ onUpload }: ContentUploadZoneProps) {
   const onDrop = useCallback(
     (acceptedFiles: File[]) => {
-      if (acceptedFiles.length > 0) {
-        onFilesSelected(acceptedFiles)
-      }
+      onUpload(acceptedFiles)
     },
-    [onFilesSelected]
+    [onUpload]
   )
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
-    disabled,
-    accept,
-    multiple: true
+    accept: {
+      'image/*': ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'],
+      'video/*': ['.mp4', '.webm', '.mov'],
+      'application/pdf': ['.pdf'],
+      'application/msword': ['.doc'],
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
+        ['.docx'],
+      'application/vnd.ms-excel': ['.xls'],
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': [
+        '.xlsx',
+      ],
+      'text/plain': ['.txt'],
+      'text/csv': ['.csv'],
+    },
+    multiple: true,
   })
 
   return (
     <div
       {...getRootProps()}
-      className={cn(
-        'relative cursor-pointer rounded-xl border-2 border-dashed border-primary/15 bg-accent/50 p-6 transition-all',
-        isDragActive && 'border-primary/40 bg-accent',
-        disabled && 'cursor-not-allowed opacity-50'
-      )}
+      className={`cursor-pointer rounded-lg border-2 border-dashed p-12 text-center transition-colors ${
+        isDragActive
+          ? 'border-primary bg-primary/5'
+          : 'border-muted-foreground/25 hover:border-primary/50'
+      }`}
     >
       <input {...getInputProps()} />
-      <div className="flex flex-col items-center gap-3 text-center">
-        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
-          <Icon type="upload" size="md" className="text-primary" />
-        </div>
-        <div>
-          <p className="text-xs font-medium uppercase text-primary">
-            {isDragActive ? 'Drop files here' : 'Upload Content'}
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Drag & drop or click to browse
-          </p>
-        </div>
-        <p className="text-xs text-muted">
-          Supports images, videos, PDFs, and documents
-        </p>
-      </div>
+      <Upload className="mx-auto h-12 w-12 text-muted-foreground" />
+      <p className="mt-4 text-sm text-muted-foreground">
+        {isDragActive
+          ? 'Drop files here...'
+          : 'Drag & drop files here, or click to select'}
+      </p>
+      <p className="mt-2 text-xs text-muted-foreground">
+        Supports: Images, Videos, PDFs, Documents
+      </p>
     </div>
   )
 }
