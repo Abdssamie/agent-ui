@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { ContentFilter, ContentType } from '@/types/content'
 import { Input } from '@/components/ui/input'
 import {
@@ -17,14 +18,30 @@ interface ContentFiltersProps {
 }
 
 export function ContentFilters({ filter, onChange, uploadButton }: ContentFiltersProps) {
+  const [searchValue, setSearchValue] = useState(filter.search || '')
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchValue !== filter.search) {
+        onChange({ ...filter, search: searchValue })
+      }
+    }, 500)
+
+    return () => clearTimeout(timer)
+  }, [searchValue])
+
+  useEffect(() => {
+    setSearchValue(filter.search || '')
+  }, [filter.search])
+
   return (
     <div className="flex w-full items-center justify-between gap-3">
       <div className="flex items-center gap-2">
         {uploadButton}
         <Input
           placeholder="Search..."
-          value={filter.search || ''}
-          onChange={(e) => onChange({ ...filter, search: e.target.value })}
+          value={searchValue}
+          onChange={(e) => setSearchValue(e.target.value)}
           className="w-64"
         />
       </div>
