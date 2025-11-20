@@ -55,25 +55,48 @@ export const useContentStore = create<ContentState>((set, get) => ({
     set({ loading: true, error: null })
     try {
       const { provider, filter } = get()
-      const response = await listContentAPI(provider, { 
-        limit: 50,
-        filter: filter.search ? { search: filter.search } : undefined
-      })
       
-      // Client-side search filter
-      let items = response.items
+      // If searching, load all items
       if (filter.search) {
+        let allItems: ContentItem[] = []
+        let continuationToken: string | undefined = undefined
+        
+        // Fetch all items (max 500 for safety)
+        while (allItems.length < 500) {
+          const response = await listContentAPI(provider, { 
+            limit: 100,
+            pageToken: continuationToken
+          })
+          
+          allItems.push(...response.items)
+          
+          if (!response.nextPageToken) break
+          continuationToken = response.nextPageToken
+        }
+        
+        // Filter by search
         const search = filter.search.toLowerCase()
-        items = items.filter(item => item.name.toLowerCase().includes(search))
+        const filtered = allItems.filter(item => item.name.toLowerCase().includes(search))
+        
+        set({
+          items: filtered,
+          hasNextPage: false,
+          pageTokens: [''],
+          currentPage: 1,
+          loading: false,
+        })
+      } else {
+        // Normal pagination
+        const response = await listContentAPI(provider, { limit: 50 })
+        
+        set({
+          items: response.items,
+          hasNextPage: !!response.nextPageToken,
+          pageTokens: ['', response.nextPageToken || ''],
+          currentPage: 1,
+          loading: false,
+        })
       }
-      
-      set({
-        items,
-        hasNextPage: !!response.nextPageToken,
-        pageTokens: ['', response.nextPageToken || ''],
-        currentPage: 1,
-        loading: false,
-      })
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : 'Failed to load content',
@@ -83,7 +106,7 @@ export const useContentStore = create<ContentState>((set, get) => ({
   },
 
   goToPage: async (page) => {
-    const { provider, pageTokens, currentPage, filter } = get()
+    const { provider, pageTokens, currentPage } = get()
     if (page === currentPage) return
 
     set({ loading: true })
@@ -94,20 +117,13 @@ export const useContentStore = create<ContentState>((set, get) => ({
         limit: 50,
       })
 
-      // Client-side search filter
-      let items = response.items
-      if (filter.search) {
-        const search = filter.search.toLowerCase()
-        items = items.filter(item => item.name.toLowerCase().includes(search))
-      }
-
       const newPageTokens = [...pageTokens]
       if (response.nextPageToken && !newPageTokens[page]) {
         newPageTokens[page] = response.nextPageToken
       }
 
       set({
-        items,
+        items: response.items,
         hasNextPage: !!response.nextPageToken,
         pageTokens: newPageTokens,
         currentPage: page,
