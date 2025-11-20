@@ -34,6 +34,7 @@ export function ContentManager() {
 
   const [previewItem, setPreviewItem] = useState<ContentItem | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [loadingPreview, setLoadingPreview] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -55,12 +56,17 @@ export function ContentManager() {
   }
 
   const handlePreview = async (item: ContentItem) => {
+    setDialogOpen(true)
+    setLoadingPreview(true)
+    setPreviewItem(item)
+    
     try {
       const url = await getContentUrlAPI(item.id, provider)
       setPreviewItem({ ...item, url })
-      setDialogOpen(true)
     } catch (error) {
       console.error('Failed to get URL:', error)
+    } finally {
+      setLoadingPreview(false)
     }
   }
 
@@ -169,6 +175,7 @@ export function ContentManager() {
         onOpenChange={setDialogOpen}
         onDelete={deleteItem}
         onDownload={handleDownload}
+        loading={loadingPreview}
       />
 
       <UploadQueue uploads={uploads} />

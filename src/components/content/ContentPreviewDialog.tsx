@@ -17,6 +17,7 @@ interface ContentPreviewDialogProps {
   onOpenChange: (open: boolean) => void
   onDelete: (id: string) => void
   onDownload: (item: ContentItem) => void
+  loading: boolean
 }
 
 export function ContentPreviewDialog({
@@ -25,6 +26,7 @@ export function ContentPreviewDialog({
   onOpenChange,
   onDelete,
   onDownload,
+  loading,
 }: ContentPreviewDialogProps) {
   if (!item) return null
 
@@ -35,14 +37,22 @@ export function ContentPreviewDialog({
           <DialogTitle className="text-xl">{item.name}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 p-2">
-          {item.type === 'image' && item.url && (
-            <div className="flex max-h-[50vh] items-center justify-center overflow-hidden rounded-lg border bg-muted">
-              <img
-                src={item.url}
-                alt={item.name}
-                className="max-h-[50vh] w-full object-contain"
-              />
+          {loading ? (
+            <div className="flex h-64 items-center justify-center">
+              <Icon type="loader" size="lg" className="animate-spin text-muted-foreground" />
             </div>
+          ) : (
+            <>
+              {item.type === 'image' && item.url && (
+                <div className="flex max-h-[50vh] items-center justify-center overflow-hidden rounded-lg border bg-muted">
+                  <img
+                    src={item.url}
+                    alt={item.name}
+                    className="max-h-[50vh] w-full object-contain"
+                  />
+                </div>
+              )}
+            </>
           )}
           <div className="space-y-2">
             <div className="flex justify-between py-1.5">
