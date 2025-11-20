@@ -15,6 +15,10 @@ export class S3Strategy implements StorageStrategy {
     const params = new URLSearchParams()
     if (options?.pageToken) params.set('pageToken', options.pageToken)
     if (options?.limit) params.set('limit', options.limit.toString())
+    if (options?.filter?.search) params.set('search', options.filter.search)
+    if (options?.filter?.type) params.set('type', options.filter.type)
+    if (options?.filter?.sortBy) params.set('sortBy', options.filter.sortBy)
+    if (options?.filter?.sortOrder) params.set('sortOrder', options.filter.sortOrder)
 
     const response = await fetch(`/api/content/list?${params}`)
     if (!response.ok) throw new Error('Failed to list content')
@@ -23,9 +27,8 @@ export class S3Strategy implements StorageStrategy {
 
     const items: ContentItem[] = data.items.map((item: any) => ({
       ...item,
-      type: getContentType(this.getMimeType(item.id)),
       storageProvider: 's3' as const,
-      metadata: { mimeType: this.getMimeType(item.id) },
+      metadata: { mimeType: item.mimeType },
     }))
 
     return {
@@ -80,28 +83,5 @@ export class S3Strategy implements StorageStrategy {
 
   async validateFile(file: File): Promise<{ valid: boolean; error?: string }> {
     return validateFileUtil(file)
-  }
-
-  private getMimeType(key: string): string {
-    const ext = key.split('.').pop()?.toLowerCase()
-    const mimeTypes: Record<string, string> = {
-      jpg: 'image/jpeg',
-      jpeg: 'image/jpeg',
-      png: 'image/png',
-      gif: 'image/gif',
-      webp: 'image/webp',
-      svg: 'image/svg+xml',
-      mp4: 'video/mp4',
-      webm: 'video/webm',
-      mov: 'video/quicktime',
-      pdf: 'application/pdf',
-      doc: 'application/msword',
-      docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      xls: 'application/vnd.ms-excel',
-      xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      txt: 'text/plain',
-      csv: 'text/csv',
-    }
-    return mimeTypes[ext || ''] || 'application/octet-stream'
   }
 }
