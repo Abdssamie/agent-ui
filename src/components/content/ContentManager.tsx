@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button'
 import Icon from '@/components/ui/icon'
 import { ContentItem } from '@/types/content'
 import { getContentUrlAPI } from '@/api/content'
+import { toast } from 'sonner'
 
 export function ContentManager() {
   const {
@@ -78,6 +79,15 @@ export function ContentManager() {
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
+  }
+
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteItem(id)
+      toast.success('File deleted successfully')
+    } catch (error) {
+      toast.error('Failed to delete file')
+    }
   }
 
   return (
@@ -173,7 +183,7 @@ export function ContentManager() {
         item={previewItem}
         open={dialogOpen}
         onOpenChange={setDialogOpen}
-        onDelete={deleteItem}
+        onDelete={handleDelete}
         onDownload={handleDownload}
         loading={loadingPreview}
       />
