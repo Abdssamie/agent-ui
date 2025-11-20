@@ -28,10 +28,8 @@ export class S3Strategy implements StorageStrategy {
       metadata: { mimeType: this.getMimeType(item.id) },
     }))
 
-    const filtered = this.applyFilters(items, options?.filter)
-
     return {
-      items: filtered,
+      items,
       nextPageToken: data.nextPageToken,
       totalCount: data.totalCount,
     }
@@ -105,38 +103,5 @@ export class S3Strategy implements StorageStrategy {
       csv: 'text/csv',
     }
     return mimeTypes[ext || ''] || 'application/octet-stream'
-  }
-
-  private applyFilters(items: ContentItem[], filter?: ContentFilter): ContentItem[] {
-    let filtered = [...items]
-
-    if (filter?.type) {
-      filtered = filtered.filter((item) => item.type === filter.type)
-    }
-
-    if (filter?.search) {
-      const search = filter.search.toLowerCase()
-      filtered = filtered.filter((item) => item.name.toLowerCase().includes(search))
-    }
-
-    if (filter?.sortBy) {
-      filtered.sort((a, b) => {
-        let comparison = 0
-        switch (filter.sortBy) {
-          case 'name':
-            comparison = a.name.localeCompare(b.name)
-            break
-          case 'date':
-            comparison = new Date(a.uploadedAt).getTime() - new Date(b.uploadedAt).getTime()
-            break
-          case 'size':
-            comparison = a.size - b.size
-            break
-        }
-        return filter.sortOrder === 'desc' ? -comparison : comparison
-      })
-    }
-
-    return filtered
   }
 }
