@@ -81,11 +81,16 @@ export function ContentManager() {
           onChange={handleFileSelect}
           className="hidden"
         />
-        <Button onClick={() => fileInputRef.current?.click()} size="sm">
-          <Icon type="upload" size="sm" className="mr-2" />
-          Upload
-        </Button>
-        <ContentFilters filter={filter} onChange={setFilter} />
+        <ContentFilters
+          filter={filter}
+          onChange={setFilter}
+          uploadButton={
+            <Button onClick={() => fileInputRef.current?.click()}>
+              <Icon type="upload" size="sm" className="mr-2" />
+              Upload
+            </Button>
+          }
+        />
       </div>
 
       {loading && items.length === 0 ? (
