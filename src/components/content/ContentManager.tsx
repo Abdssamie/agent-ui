@@ -67,20 +67,14 @@ export function ContentManager() {
   const handleDownload = async (item: ContentItem) => {
     if (!item.url) return
     
-    try {
-      const response = await fetch(item.url)
-      const blob = await response.blob()
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = item.name
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      window.URL.revokeObjectURL(url)
-    } catch (error) {
-      console.error('Download failed:', error)
-    }
+    const a = document.createElement('a')
+    a.href = item.url
+    a.download = item.name
+    a.target = '_blank'
+    a.rel = 'noopener noreferrer'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
   }
 
   return (
