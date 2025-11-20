@@ -28,6 +28,7 @@ interface ContentState {
   uploadFile: (file: File) => Promise<void>
   deleteItem: (id: string) => Promise<void>
   clearError: () => void
+  updateItemUrl: (id: string, url: string) => void
 }
 
 export const useContentStore = create<ContentState>((set, get) => ({
@@ -198,4 +199,12 @@ export const useContentStore = create<ContentState>((set, get) => ({
   },
 
   clearError: () => set({ error: null }),
+
+  updateItemUrl: (id: string, url: string) => {
+    set((state) => ({
+      items: state.items.map((item) =>
+        item.id === id ? { ...item, url } : item
+      ),
+    }))
+  },
 }))

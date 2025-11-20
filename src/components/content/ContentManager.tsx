@@ -31,6 +31,7 @@ export function ContentManager() {
     uploadFile,
     deleteItem,
     clearError,
+    updateItemUrl,
   } = useContentStore()
 
   const [previewItem, setPreviewItem] = useState<ContentItem | null>(null)
@@ -41,6 +42,25 @@ export function ContentManager() {
   useEffect(() => {
     loadContent()
   }, [loadContent])
+
+  useEffect(() => {
+    const fetchPreviews = async () => {
+      for (const item of items) {
+        if (item.type === 'image' && !item.url) {
+          try {
+            const url = await getContentUrlAPI(item.id, provider)
+            updateItemUrl(item.id, url)
+          } catch (error) {
+            console.error('Failed to fetch preview:', error)
+          }
+        }
+      }
+    }
+
+    if (items.length > 0) {
+      fetchPreviews()
+    }
+  }, [items.length, provider, updateItemUrl])
 
   const handleUpload = async (files: File[]) => {
     for (const file of files) {
@@ -58,12 +78,20 @@ export function ContentManager() {
 
   const handlePreview = async (item: ContentItem) => {
     setDialogOpen(true)
-    setLoadingPreview(true)
     setPreviewItem(item)
     
+    // If URL already exists, no need to fetch
+    if (item.url) {
+      setLoadingPreview(false)
+      return
+    }
+    
+    setLoadingPreview(true)
     try {
       const url = await getContentUrlAPI(item.id, provider)
-      setPreviewItem({ ...item, url })
+      const updatedItem = { ...item, url }
+      setPreviewItem(updatedItem)
+      updateItemUrl(item.id, url)
     } catch (error) {
       console.error('Failed to get URL:', error)
     } finally {
