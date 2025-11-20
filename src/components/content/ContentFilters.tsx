@@ -23,11 +23,12 @@ export function ContentFilters({ filter, onChange, uploadButton }: ContentFilter
   useEffect(() => {
     const timer = setTimeout(() => {
       if (searchValue !== filter.search) {
-        onChange({ ...filter, search: searchValue })
+        onChange({ ...filter, search: searchValue || undefined })
       }
     }, 500)
 
     return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchValue])
 
   useEffect(() => {
