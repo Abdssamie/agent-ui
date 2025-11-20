@@ -99,24 +99,26 @@ export const WorkflowExecutionDialog = ({
   }
 
   // Reset state when workflow changes
-  if (workflow?.id !== prevWorkflowIdRef.current) {
-    prevWorkflowIdRef.current = workflow?.id || null
-    
-    if (inputType === 'string') {
-      setInputMode('simple')
-      setMessage('')
-      if (workflow?.metadata?.json_input_example) {
-        setJsonInput(JSON.stringify(workflow.metadata.json_input_example, null, 2))
+  useEffect(() => {
+    if (workflow?.id !== prevWorkflowIdRef.current) {
+      prevWorkflowIdRef.current = workflow?.id || null
+      
+      if (inputType === 'string') {
+        setInputMode('simple')
+        setMessage('')
+        if (workflow?.metadata?.json_input_example) {
+          setJsonInput(JSON.stringify(workflow.metadata.json_input_example, null, 2))
+        } else {
+          setJsonInput('{\n  "message": ""\n}')
+        }
       } else {
-        setJsonInput('{\n  "message": ""\n}')
+        setInputMode('json')
+        setMessage('')
+        const template = generateTemplateFromSchema(workflow?.input_schema || {})
+        setJsonInput(JSON.stringify(template, null, 2))
       }
-    } else {
-      setInputMode('json')
-      setMessage('')
-      const template = generateTemplateFromSchema(workflow?.input_schema || {})
-      setJsonInput(JSON.stringify(template, null, 2))
     }
-  }
+  }, [workflow?.id, inputType, workflow?.metadata?.json_input_example, workflow?.input_schema])
 
   // Parse logs into workflow execution object
   const workflowExecution = useMemo(() => {

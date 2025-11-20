@@ -1,5 +1,5 @@
 "use client"
-import {useEffect, useMemo, useRef, useState} from 'react'
+import {useCallback, useEffect, useMemo, useRef, useState} from 'react'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
@@ -26,7 +26,7 @@ const defaultFilters: FiltersState = {
 }
 
 export function usePersistentState<T>(key: string, initial: T) {
-  const [state, setState] = useState<T>(() => {
+  const [state, setStateInternal] = useState<T>(() => {
     if (typeof window === 'undefined') return initial
     try {
       const raw = localStorage.getItem(key)
@@ -37,11 +37,17 @@ export function usePersistentState<T>(key: string, initial: T) {
       return initial
     }
   })
-  useEffect(() => {
-    try {
-      localStorage.setItem(key, JSON.stringify(state))
-    } catch {}
-  }, [key, state])
+  
+  const setState = useCallback((value: T | ((prev: T) => T)) => {
+    setStateInternal(prev => {
+      const newValue = typeof value === 'function' ? (value as (prev: T) => T)(prev) : value
+      try {
+        localStorage.setItem(key, JSON.stringify(newValue))
+      } catch {}
+      return newValue
+    })
+  }, [key])
+  
   return [state, setState] as const
 }
 

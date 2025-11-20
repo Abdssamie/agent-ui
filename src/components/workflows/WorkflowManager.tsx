@@ -57,20 +57,6 @@ export const WorkflowManager = ({ baseUrl, dbId }: WorkflowManagerProps) => {
     }
   }, [loadWorkflows])
 
-  // Prevent page reload/close while workflow is executing
-  useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (isExecuting) {
-        e.preventDefault()
-        e.returnValue = 'You have an active workflow running. Leaving will disconnect real-time updates and lose execution status. Are you sure?'
-        return e.returnValue
-      }
-    }
-
-    window.addEventListener('beforeunload', handleBeforeUnload)
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
-  }, [isExecuting])
-
   const handleTrigger = async (workflowId: string) => {
     const workflow = workflows.find(w => w.id === workflowId)
     
@@ -200,6 +186,9 @@ export const WorkflowManager = ({ baseUrl, dbId }: WorkflowManagerProps) => {
     }
   }
 
+  // Memoize filters object to prevent infinite re-renders
+  const filtersWithQuery = useMemo(() => ({ ...filters, query: searchQuery }), [filters, searchQuery])
+
   // Search + filter + sort with memoization
   const filteredWorkflows = useMemo(() => {
     const q = (searchQuery || filters.query || '').toLowerCase()
@@ -265,7 +254,7 @@ export const WorkflowManager = ({ baseUrl, dbId }: WorkflowManagerProps) => {
                 <span className="text-xs font-medium uppercase">Refresh</span>
               </Button>
             </div>
-            <FilterPanel filters={{ ...filters, query: searchQuery }} onChange={setFilters} />
+            <FilterPanel filters={filtersWithQuery} onChange={setFilters} />
           </div>
 
           {/* Workflows List */}
