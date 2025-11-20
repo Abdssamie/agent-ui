@@ -1,7 +1,7 @@
 'use client'
 
 import { ContentItem } from '@/types/content'
-import { FileIcon } from 'lucide-react'
+import { FileIcon, PlayCircle } from 'lucide-react'
 import { formatFileSize } from '@/lib/content/validation'
 
 interface ContentGridProps {
@@ -25,10 +25,26 @@ export function ContentGrid({ items, onPreview }: ContentGridProps) {
                 alt={item.name}
                 className="h-full w-full object-cover"
               />
+            ) : item.type === 'video' && item.url ? (
+              <div className="relative h-full w-full">
+                <video
+                  src={item.url}
+                  className="h-full w-full object-cover"
+                  preload="metadata"
+                  muted
+                />
+                <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                  <PlayCircle className="h-12 w-12 text-white drop-shadow-lg" />
+                </div>
+              </div>
             ) : (
-              <div className="flex h-full flex-col items-center justify-center gap-2">
-                <FileIcon className="h-8 w-8 text-muted-foreground" />
-                <span className="text-xs font-medium text-muted-foreground uppercase">{item.type}</span>
+              <div className={`flex h-full flex-col items-center justify-center gap-2 ${
+                item.type === 'pdf' ? 'bg-red-900' :
+                item.type === 'document' ? 'bg-blue-900' :
+                'bg-green-900'
+              }`}>
+                <FileIcon className="h-8 w-8 text-white" />
+                <span className="text-xs font-medium uppercase text-white">{item.type}</span>
               </div>
             )}
           </div>

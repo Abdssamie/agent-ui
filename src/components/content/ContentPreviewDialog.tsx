@@ -61,6 +61,18 @@ export function ContentPreviewDialog({
                   />
                 </div>
               )}
+              {item.type === 'video' && item.url && (
+                <div className="overflow-hidden rounded-lg border bg-black">
+                  <video
+                    src={item.url}
+                    controls
+                    className="w-full"
+                    preload="metadata"
+                  >
+                    Your browser does not support video playback.
+                  </video>
+                </div>
+              )}
             </>
           )}
           <div className="space-y-2">
