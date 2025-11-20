@@ -99,14 +99,14 @@ export function ContentManager() {
           </p>
         </div>
       ) : (
-        <div className="flex-1 space-y-6 overflow-y-auto rounded-xl border p-6">
+        <div className="flex-1 space-y-4 overflow-y-auto rounded-xl border p-4">
           <ContentGrid
             items={items}
             onDelete={deleteItem}
             onPreview={setPreviewItem}
           />
           {nextPageToken && (
-            <div className="flex justify-center pb-6">
+            <div className="flex justify-center">
               <Button onClick={loadMore} disabled={loading} variant="outline">
                 {loading ? (
                   <>
