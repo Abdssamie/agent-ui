@@ -21,7 +21,7 @@ const Images = ({ images, size = 'normal' }: ImagesProps) => {
   }
 
   const getImageKey = (image: ImageData): string => {
-    return image.id || image.url || `image-${Date.now()}-${images.indexOf(image)}`
+    return image.id || image.url || `image-${images.indexOf(image)}`
   }
 
   return (

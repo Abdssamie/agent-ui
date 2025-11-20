@@ -4,7 +4,6 @@ import type {
   WorkflowExecution,
   WorkflowStep,
 } from '@/types/workflow'
-import { formatDuration, formatTimestamp } from '@/utils/workflow'
 
 /**
  * Parse a single workflow log line
@@ -86,7 +85,7 @@ export function buildWorkflowExecution(
   const errors: string[] = []
   let status: WorkflowExecution['status'] = 'running'
   let completedAt: number | undefined
-  let wasCancelled = false
+  const wasCancelled = false
 
   // Process events to build step states
   for (const event of events) {

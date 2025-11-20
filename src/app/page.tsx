@@ -31,7 +31,7 @@ const PlaceholderView = ({ viewName, icon }: { viewName: string; icon: string })
           <div className="text-xs text-muted-foreground">
             <p className="text-xs font-medium uppercase text-primary mb-1">Stay Tuned</p>
             <p>
-              We're working hard to bring you powerful {viewName.toLowerCase()} management tools designed for solo entrepreneurs.
+              We&apos;re working hard to bring you powerful {viewName.toLowerCase()} management tools designed for solo entrepreneurs.
             </p>
           </div>
         </div>

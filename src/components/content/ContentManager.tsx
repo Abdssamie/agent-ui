@@ -235,7 +235,7 @@ export const ContentManager = () => {
                   </Badge>
                 </div>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  This Content Library feature is currently under development. The UI below demonstrates the planned functionality for managing your company's PDFs, images, videos, and documents across Cloudflare R2 and Google Drive storage. Backend integration is in progress.
+                  This Content Library feature is currently under development. The UI below demonstrates the planned functionality for managing your company&apos;s PDFs, images, videos, and documents across Cloudflare R2 and Google Drive storage. Backend integration is in progress.
                 </p>
               </div>
             </div>

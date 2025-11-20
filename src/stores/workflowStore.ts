@@ -8,7 +8,7 @@ import type {
   WorkflowSchedule,
   WorkflowCacheConfig
 } from '@/types/workflow'
-import { workflowCache, CacheKeys } from '@/lib/workflowCache'
+import { workflowCache } from '@/lib/workflowCache'
 import { workflowHistoryDB } from '@/lib/workflowHistoryDB'
 
 interface WorkflowState {
@@ -69,9 +69,10 @@ interface WorkflowState {
     executionId: string,
     updates: Partial<ExecutionRecord>
   ) => void
-
-  // Actions - Execution history
-  addExecutionToHistory: (execution: ExecutionRecord) => Promise<void>
+  updateWorkflowStatus: (workflowId: string, status: 'running' | 'idle') => void
+ 
+   // Actions - Execution history
+   addExecutionToHistory: (execution: ExecutionRecord) => Promise<void>
   loadExecutionHistory: (workflowId?: string, limit?: number) => Promise<void>
   clearExecutionHistory: () => Promise<void>
   setIsLoadingHistory: (isLoading: boolean) => void
@@ -186,9 +187,15 @@ export const useWorkflowStore = create<WorkflowState>()(
           }
           return state
         }),
-
-      // Execution history
-      addExecutionToHistory: async (execution) => {
+      updateWorkflowStatus: (workflowId, status) =>
+        set(state => ({
+          workflows: state.workflows.map(w =>
+            w.id === workflowId ? { ...w, status } : w
+          )
+        })),
+ 
+       // Execution history
+       addExecutionToHistory: async (execution) => {
         try {
           await workflowHistoryDB.addExecution(execution)
           set((state) => ({

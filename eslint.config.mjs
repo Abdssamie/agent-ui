@@ -1,31 +1,17 @@
-import { dirname } from 'path'
-import { fileURLToPath } from 'url'
-import { FlatCompat } from '@eslint/eslintrc'
-
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = dirname(__filename)
-
-const compat = new FlatCompat({
-  baseDirectory: __dirname
-})
+import nextPlugin from "@next/eslint-plugin-next";
+import nextVitals from 'eslint-config-next/core-web-vitals'
+import nextConfig from "eslint-config-next";
 
 const eslintConfig = [
-  ...compat.extends('next/core-web-vitals', 'next/typescript'),
+    ...nextVitals,
+  ...nextConfig,
   {
+    files: ["src/**/*.{js,jsx,ts,tsx}"],
     rules: {
       // Disable strict TypeScript rules that cause build failures
-      '@typescript-eslint/no-unused-vars': 'off',
-      '@typescript-eslint/no-explicit-any': 'off',
-      '@typescript-eslint/no-empty-object-type': 'off',
+        ...nextPlugin.configs.recommended.rules,
+    },
+  },
+];
 
-      // Disable React rules that cause build failures
-      'react/no-unescaped-entities': 'off',
-      'react-hooks/exhaustive-deps': 'warn',
-
-      // Disable Next.js rules that cause build failures
-      '@next/next/no-img-element': 'warn'
-    }
-  }
-]
-
-export default eslintConfig
+export default eslintConfig;

@@ -37,6 +37,7 @@ export const WorkflowExecutionDialog = ({
   onCancel,
   isCancelling = false
 }: WorkflowExecutionDialogProps) => {
+  const prevWorkflowIdRef = useRef<string | null>(null)
   const [message, setMessage] = useState('')
   const [inputMode, setInputMode] = useState<'simple' | 'json'>('simple')
   const [jsonInput, setJsonInput] = useState('{\n  "message": "",\n  "images": []\n}')
@@ -97,27 +98,25 @@ export const WorkflowExecutionDialog = ({
     return template
   }
 
-  // Initialize input mode and JSON template based on workflow input_schema
-  useEffect(() => {
+  // Reset state when workflow changes
+  if (workflow?.id !== prevWorkflowIdRef.current) {
+    prevWorkflowIdRef.current = workflow?.id || null
+    
     if (inputType === 'string') {
-      // Simple string input (agent-based workflows)
       setInputMode('simple')
       setMessage('')
-      
-      // Set JSON template from metadata if available
       if (workflow?.metadata?.json_input_example) {
         setJsonInput(JSON.stringify(workflow.metadata.json_input_example, null, 2))
       } else {
-        // Default template for agent workflows
         setJsonInput('{\n  "message": ""\n}')
       }
-    } else if (inputType === 'object') {
-      // Structured JSON input (function-based workflows)
+    } else {
       setInputMode('json')
+      setMessage('')
       const template = generateTemplateFromSchema(workflow?.input_schema || {})
       setJsonInput(JSON.stringify(template, null, 2))
     }
-  }, [workflow, inputType])
+  }
 
   // Parse logs into workflow execution object
   const workflowExecution = useMemo(() => {

@@ -4,11 +4,14 @@ import { motion } from 'framer-motion'
 import { WorkflowGrid } from './WorkflowGrid'
 import { FilterPanel, SearchBar, SortSelector, usePersistentState } from './Controls'
 import { WorkflowExecutionDialog } from './WorkflowExecutionDialog'
+import { ActiveRunsWarningDialog } from './ActiveRunsWarningDialog'
 import { getWorkflowsAPI, getWorkflowDetailsAPI, executeWorkflowAPI, cancelWorkflowRunAPI } from '@/api/workflows'
+import { parseWorkflowLogLine } from '@/lib/workflowParser'
 import { WorkflowSummary } from '@/types/workflow'
 import { Button } from '@/components/ui/button'
 import Icon from '@/components/ui/icon'
 import { toast } from 'sonner'
+import { useWorkflowStore } from '@/stores/workflowStore'
 
 interface WorkflowManagerProps {
   baseUrl: string
@@ -16,20 +19,22 @@ interface WorkflowManagerProps {
 }
 
 export const WorkflowManager = ({ baseUrl, dbId }: WorkflowManagerProps) => {
+  const { isExecuting, setIsExecuting } = useWorkflowStore()
   const [workflows, setWorkflows] = useState<WorkflowSummary[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = usePersistentState<string>('wf.query', '')
   const [filters, setFilters] = usePersistentState<{ query: string; category: 'all' | string; status: 'all' | 'active' | 'inactive'; date: 'any' | '24h' | '7d' | '30d' }>('wf.filters', { query: '', category: 'all', status: 'all', date: 'any' })
   const [sortKey, setSortKey] = usePersistentState<'name' | 'date' | 'execCount'>('wf.sort', 'name')
-    const [selectedWorkflow, setSelectedWorkflow] = useState<WorkflowSummary | null>(null)
+  const [selectedWorkflow, setSelectedWorkflow] = useState<WorkflowSummary | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
-  const [isExecuting, setIsExecuting] = useState(false)
   const [executionLogs, setExecutionLogs] = useState<string[]>([])
-  const [executingWorkflowId, setExecutingWorkflowId] = useState<string | null>(null)
   const [currentRunId, setCurrentRunId] = useState<string | null>(null)
   const [isCancelling, setIsCancelling] = useState(false)
+  const [showNavigationWarning, setShowNavigationWarning] = useState(false)
   const wasCancelledRef = useRef(false)
   const hasLoadedRef = useRef(false)
+
+  const executingWorkflowId = selectedWorkflow?.id || null
 
   const loadWorkflows = useCallback(async () => {
     setIsLoading(true)
@@ -52,6 +57,20 @@ export const WorkflowManager = ({ baseUrl, dbId }: WorkflowManagerProps) => {
     }
   }, [loadWorkflows])
 
+  // Prevent page reload/close while workflow is executing
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isExecuting) {
+        e.preventDefault()
+        e.returnValue = 'You have an active workflow running. Leaving will disconnect real-time updates and lose execution status. Are you sure?'
+        return e.returnValue
+      }
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [isExecuting])
+
   const handleTrigger = async (workflowId: string) => {
     const workflow = workflows.find(w => w.id === workflowId)
     
@@ -66,19 +85,23 @@ export const WorkflowManager = ({ baseUrl, dbId }: WorkflowManagerProps) => {
         setSelectedWorkflow(workflow)
       }
       
-      // Only reset logs if this is a different workflow or not currently executing
-      if (executingWorkflowId !== workflowId) {
-        setExecutionLogs([])
-      }
       setDialogOpen(true)
     }
   }
+
+  // Prevent closing dialog while workflow is running
+  const handleDialogOpenChange = useCallback((open: boolean) => {
+    if (!open && isExecuting) {
+      setShowNavigationWarning(true)
+    } else {
+      setDialogOpen(open)
+    }
+  }, [isExecuting])
 
   const handleExecute = async (message: string) => {
     if (!selectedWorkflow?.id) return
 
     setIsExecuting(true)
-    setExecutingWorkflowId(selectedWorkflow.id)
     setCurrentRunId(null)
     wasCancelledRef.current = false
     setExecutionLogs([`Starting workflow: ${selectedWorkflow.name}`])
@@ -111,6 +134,17 @@ export const WorkflowManager = ({ baseUrl, dbId }: WorkflowManagerProps) => {
           } catch {
             // Ignore parsing errors - data might not be JSON
           }
+
+          const logLine = parseWorkflowLogLine(`[${event}] ${data}`)
+          if (logLine?.event) {
+            switch (logLine.event.event) {
+              case 'WorkflowCompleted':
+              case 'WorkflowCancelled':
+              case 'WorkflowError':
+                setIsExecuting(false)
+                break
+            }
+          }
         }
       )
       
@@ -128,7 +162,6 @@ export const WorkflowManager = ({ baseUrl, dbId }: WorkflowManagerProps) => {
       }
     } finally {
       setIsExecuting(false)
-      setExecutingWorkflowId(null)
       setCurrentRunId(null)
     }
   }
@@ -156,8 +189,6 @@ export const WorkflowManager = ({ baseUrl, dbId }: WorkflowManagerProps) => {
       )
       
       if (success) {
-        setIsExecuting(false)
-        setExecutingWorkflowId(null)
         setCurrentRunId(null)
         setExecutionLogs(prev => [...prev, 'Workflow cancelled by user'])
       }
@@ -172,7 +203,7 @@ export const WorkflowManager = ({ baseUrl, dbId }: WorkflowManagerProps) => {
   // Search + filter + sort with memoization
   const filteredWorkflows = useMemo(() => {
     const q = (searchQuery || filters.query || '').toLowerCase()
-    let list = workflows.filter(w => {
+    const list = workflows.filter(w => {
       const matchesQuery = q
         ? (w.name?.toLowerCase().includes(q) || w.id?.toLowerCase().includes(q) || w.description?.toLowerCase().includes(q))
         : true
@@ -289,7 +320,7 @@ export const WorkflowManager = ({ baseUrl, dbId }: WorkflowManagerProps) => {
       {/* Execution Dialog */}
       <WorkflowExecutionDialog
         open={dialogOpen}
-        onOpenChangeAction={setDialogOpen}
+        onOpenChangeAction={handleDialogOpenChange}
         workflow={selectedWorkflow}
         onExecuteAction={handleExecute}
         isExecuting={isExecuting}
@@ -297,6 +328,16 @@ export const WorkflowManager = ({ baseUrl, dbId }: WorkflowManagerProps) => {
         onCancel={handleCancel}
         isCancelling={isCancelling}
       />
-    </div>
+
+      <ActiveRunsWarningDialog
+        open={showNavigationWarning}
+        onConfirm={() => {
+          setShowNavigationWarning(false)
+          setDialogOpen(false)
+        }}
+        onCancel={() => setShowNavigationWarning(false)}
+        activeRunCount={1}
+      />
+      </div>
   )
 }

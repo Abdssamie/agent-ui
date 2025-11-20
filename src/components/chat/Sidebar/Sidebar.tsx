@@ -65,7 +65,7 @@ const Endpoint = () => {
   const { initialize } = useChatActions()
   const [isEditing, setIsEditing] = useState(false)
   const [endpointValue, setEndpointValue] = useState('')
-  const [isMounted, setIsMounted] = useState(false)
+  const [isMounted, ] = useState(true)
   const [isHovering, setIsHovering] = useState(false)
   const [isRotating, setIsRotating] = useState(false)
   const [, setAgentId] = useQueryState('agent')
@@ -73,7 +73,6 @@ const Endpoint = () => {
 
   useEffect(() => {
     setEndpointValue(selectedEndpoint)
-    setIsMounted(true)
   }, [selectedEndpoint])
 
   const getStatusColor = (isActive: boolean) =>
@@ -214,14 +213,12 @@ const Sidebar = () => {
     isEndpointLoading,
     mode
   } = useStore()
-  const [isMounted, setIsMounted] = useState(false)
+  const [isMounted, ] = useState(true)
   const [agentId] = useQueryState('agent')
   const [teamId] = useQueryState('team')
   const initializedEndpointRef = React.useRef<string | null>(null)
 
   useEffect(() => {
-    setIsMounted(true)
-
     // Only initialize if hydrated and endpoint has changed
     if (hydrated && selectedEndpoint !== initializedEndpointRef.current) {
       initializedEndpointRef.current = selectedEndpoint

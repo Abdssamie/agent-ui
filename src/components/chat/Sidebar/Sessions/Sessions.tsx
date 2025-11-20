@@ -37,7 +37,7 @@ const Sessions = () => {
     history: 'push'
   })
   const [teamId] = useQueryState('team')
-  const [sessionId] = useQueryState('session')
+  const [sessionId, setSessionId] = useQueryState('session')
   const [dbId] = useQueryState('db_id')
 
   const {
@@ -53,9 +53,6 @@ const Sessions = () => {
 
 
   const [isScrolling, setIsScrolling] = useState(false)
-  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(
-    null
-  )
 
   const { getSessions, getSession } = useSessionLoader()
   const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout>>(null)
@@ -126,13 +123,11 @@ const Sessions = () => {
     setSessionsData
   ])
 
-  useEffect(() => {
-    if (sessionId) setSelectedSessionId(sessionId)
-  }, [sessionId])
-
   const handleSessionClick = useCallback(
-    (id: string) => () => setSelectedSessionId(id),
-    []
+    (id: string) => () => {
+      void setSessionId(id)
+    },
+    [setSessionId]
   )
 
   if (isSessionsLoading || isEndpointLoading) {
@@ -168,8 +163,8 @@ const Sessions = () => {
             {sessionsData?.map((entry, idx) => (
               <SessionItem
                 key={`${entry?.session_id}-${idx}`}
-                currentSessionId={selectedSessionId}
-                isSelected={selectedSessionId === entry?.session_id}
+                currentSessionId={sessionId}
+                isSelected={sessionId === entry?.session_id}
                 onSessionClick={handleSessionClick(entry?.session_id)}
                 session_name={entry?.session_name ?? '-'}
                 session_id={entry?.session_id}

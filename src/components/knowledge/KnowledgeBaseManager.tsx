@@ -265,6 +265,14 @@ export const KnowledgeBaseManager = ({
     }
   }
 
+  const handleRemoveUpload = (id: string) => {
+    setUploadingFiles(prev => {
+      const updated = new Map(prev)
+      updated.delete(id)
+      return updated
+    })
+  }
+
   const getStatusBadge = (status: 'processing' | 'completed' | 'failed') => {
     const variants = {
       processing: 'default',
@@ -367,7 +375,7 @@ export const KnowledgeBaseManager = ({
           {/* Upload Progress */}
           {uploadingFiles.size > 0 && (
             <div className="bg-accent rounded-xl border border-primary/15 p-4">
-              <UploadProgressList uploads={uploadingFiles} />
+              <UploadProgressList uploads={uploadingFiles} onRemoveUpload={handleRemoveUpload} />
             </div>
           )}
 

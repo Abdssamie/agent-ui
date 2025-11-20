@@ -1,10 +1,11 @@
 "use client"
-import { useEffect, useMemo, useState } from 'react'
+import {useEffect, useMemo, useRef, useState} from 'react'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import Icon from '@/components/ui/icon'
 import { type IconType } from '@/components/ui/icon'
+import { useWorkflowStore } from '@/stores/workflowStore'
 
 export type StatusFilter = 'all' | 'active' | 'inactive'
 export type SortKey = 'name' | 'date' | 'execCount'
@@ -45,21 +46,45 @@ export function usePersistentState<T>(key: string, initial: T) {
 }
 
 export function SearchBar({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const [local, setLocal] = useState(value)
-  useEffect(() => setLocal(value), [value])
+  const [internalValue, setInternalValue] = useState(value);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useEffect(() => {
-    const t = setTimeout(() => onChange(local), 300)
-    return () => clearTimeout(t)
-  }, [local, onChange])
+    setInternalValue(value);
+  }, [value]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value;
+    setInternalValue(newValue);
+
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+
+    timeoutRef.current = setTimeout(() => {
+      onChange(newValue);
+    }, 300);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
+
   return (
     <div className="relative">
       <Icon type="search" size="xs" className="absolute left-3 top-1/2 -translate-y-1/2" />
-      <Input value={local} onChange={(e) => setLocal(e.target.value)} placeholder="Search workflows..." className="pl-9 rounded-xl text-xs" />
+      <Input value={internalValue} onChange={handleInputChange} placeholder="Search workflows..." className="pl-9 rounded-xl text-xs" />
     </div>
-  )
+  );
 }
 
 export function FilterPanel({ filters, onChange }: { filters: FiltersState; onChange: (f: FiltersState) => void }) {
+  const { workflows } = useWorkflowStore()
+  const hasActiveRuns = useMemo(() => workflows.some(w => (w as any).status === 'running'), [workflows])
   return (
     <div className="flex flex-wrap gap-2">
       <Select value={filters.category} onValueChange={(v) => onChange({ ...filters, category: v as any })}>
@@ -79,7 +104,7 @@ export function FilterPanel({ filters, onChange }: { filters: FiltersState; onCh
         </SelectTrigger>
         <SelectContent className="rounded-xl border border-primary/15 bg-accent text-primary">
           <SelectItem value="all">Any status</SelectItem>
-          <SelectItem value="active">Active</SelectItem>
+          <SelectItem value="active">{hasActiveRuns ? '● ' : ''}Active</SelectItem>
           <SelectItem value="inactive">Inactive</SelectItem>
         </SelectContent>
       </Select>

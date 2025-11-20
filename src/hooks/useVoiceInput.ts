@@ -35,7 +35,9 @@ export function useVoiceInput(options: VoiceInputOptions = {}): VoiceInputReturn
   const [transcript, setTranscript] = useState('')
   const [interimTranscript, setInterimTranscript] = useState('')
   const [error, setError] = useState<Error | null>(null)
-  const [isSupported, setIsSupported] = useState(false)
+  const [isSupported] = useState(() => {
+    return !!(window.SpeechRecognition || window.webkitSpeechRecognition)
+  })
 
   const recognitionRef = useRef<SpeechRecognition | null>(null)
 
@@ -45,7 +47,6 @@ export function useVoiceInput(options: VoiceInputOptions = {}): VoiceInputReturn
       window.SpeechRecognition || window.webkitSpeechRecognition
     
     if (SpeechRecognition) {
-      setIsSupported(true)
       recognitionRef.current = new SpeechRecognition()
       
       const recognition = recognitionRef.current
@@ -94,8 +95,6 @@ export function useVoiceInput(options: VoiceInputOptions = {}): VoiceInputReturn
       recognition.onend = () => {
         setIsListening(false)
       }
-    } else {
-      setIsSupported(false)
     }
 
     return () => {

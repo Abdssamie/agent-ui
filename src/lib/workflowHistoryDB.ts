@@ -15,6 +15,9 @@ export class WorkflowHistoryDB {
    * Initialize the database
    */
   async init(): Promise<void> {
+    // TODO: Implement a more robust initialization process
+    // - Handle concurrent initializations
+    // - Add retry logic
     return new Promise((resolve, reject) => {
       const request = indexedDB.open(this.dbName, this.version)
 
@@ -68,6 +71,7 @@ export class WorkflowHistoryDB {
     const db = await this.ensureDB()
 
     return new Promise((resolve, reject) => {
+      // TODO: Improve transaction error handling
       const transaction = db.transaction([this.storeName], 'readwrite')
       const store = transaction.objectStore(this.storeName)
       const request = store.add(execution)

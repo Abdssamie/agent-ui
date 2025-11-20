@@ -49,7 +49,7 @@ const ReferenceItem = memo(({ reference, index }: ReferenceItemProps) => {
             </div>
             {reference.query && (
               <div className="text-xs text-muted-foreground">
-                Query: "{reference.query}"
+                Query: &quot;{reference.query}&quot;
               </div>
             )}
             {reference.time && (
