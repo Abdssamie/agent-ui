@@ -26,9 +26,10 @@ export class S3Strategy implements StorageStrategy {
       type: getContentType(this.getMimeType(item.id)),
       storageProvider: 's3' as const,
       tags: this.extractTags(item.id),
-      source: this.extractSource(item.id),
+      source: item.metadata?.source || this.extractSource(item.id),
       metadata: { 
         mimeType: this.getMimeType(item.id),
+        ...item.metadata,
         ...this.extractMetadata(item.id)
       },
     }))

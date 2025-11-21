@@ -46,6 +46,7 @@ export async function GET(request: NextRequest) {
           name: displayName,
           size: obj.Size || 0,
           uploadedAt: obj.LastModified?.toISOString() || new Date().toISOString(),
+          metadata: obj.Metadata || {},
         }
       })
 
