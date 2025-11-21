@@ -120,8 +120,8 @@ export class S3Strategy implements StorageStrategy {
   }
 
   private extractSource(key: string): string {
-    if (key.includes('workflow-')) return 'workflow'
-    if (key.includes('agent-')) return 'agent'
+    if (/(^|\/)workflow-/.test(key)) return 'workflow'
+    if (/(^|\/)agent-/.test(key)) return 'agent'
     return 'manual'
   }
 
