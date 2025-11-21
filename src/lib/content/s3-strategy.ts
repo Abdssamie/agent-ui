@@ -26,7 +26,7 @@ export class S3Strategy implements StorageStrategy {
       type: getContentType(this.getMimeType(item.id)),
       storageProvider: 's3' as const,
       tags: this.extractTags(item.id),
-      source: item.metadata?.source || this.extractSource(item.id),
+      source: item.metadata?.source || 'manual',
       metadata: { 
         mimeType: this.getMimeType(item.id),
         ...item.metadata,
@@ -118,12 +118,6 @@ export class S3Strategy implements StorageStrategy {
   private extractTags(key: string): string[] {
     const parts = key.split('/')
     return parts.length > 1 ? parts.slice(0, -1) : []
-  }
-
-  private extractSource(key: string): string {
-    if (/(^|\/)workflow-/.test(key)) return 'workflow'
-    if (/(^|\/)agent-/.test(key)) return 'agent'
-    return 'manual'
   }
 
   private extractMetadata(key: string): Record<string, any> {
