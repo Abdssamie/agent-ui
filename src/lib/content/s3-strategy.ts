@@ -116,7 +116,7 @@ export class S3Strategy implements StorageStrategy {
 
   private extractTags(key: string): string[] {
     const parts = key.split('/')
-    return parts.length > 1 ? [parts[0]] : []
+    return parts.length > 1 ? parts.slice(0, -1) : []
   }
 
   private extractSource(key: string): string | undefined {
@@ -128,10 +128,10 @@ export class S3Strategy implements StorageStrategy {
   private extractMetadata(key: string): Record<string, any> {
     const metadata: Record<string, any> = {}
     
-    const workflowMatch = key.match(/workflow-([^/]+)/)
+    const workflowMatch = key.match(/workflow-([^/-]+)/)
     if (workflowMatch) metadata.workflowId = workflowMatch[1]
     
-    const agentMatch = key.match(/agent-([^/]+)/)
+    const agentMatch = key.match(/agent-([^/-]+)/)
     if (agentMatch) metadata.agentId = agentMatch[1]
     
     return metadata
@@ -147,7 +147,7 @@ export class S3Strategy implements StorageStrategy {
     if (filter?.search) {
       const search = filter.search.toLowerCase()
       filtered = filtered.filter((item) => 
-        item.id.toLowerCase().includes(search) || item.name.toLowerCase().includes(search)
+        item.id.toLowerCase().includes(search)
       )
     }
 
