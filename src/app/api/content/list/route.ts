@@ -26,16 +26,23 @@ export async function GET(request: NextRequest) {
 
     const items = (response.Contents || [])
       .filter((obj) => obj.Key && !obj.Key.endsWith('/') && obj.Size && obj.Size > 0)
-      .map((obj) => ({
-        id: obj.Key!,
-        name: obj.Key!.split('/').pop() || obj.Key!,
-        size: obj.Size || 0,
-        uploadedAt: obj.LastModified?.toISOString() || new Date().toISOString(),
-      }))
+      .map((obj) => {
+        const parts = obj.Key!.split('/')
+        const name = parts.pop() || obj.Key!
+        const path = parts.length > 0 ? parts.join('/') : undefined
+        
+        return {
+          id: obj.Key!,
+          name,
+          path,
+          size: obj.Size || 0,
+          uploadedAt: obj.LastModified?.toISOString() || new Date().toISOString(),
+        }
+      })
 
     return NextResponse.json({
       items,
-      nextPageToken: response.NextContinuationToken,
+      nextPageToken: items.length > 0 ? response.NextContinuationToken : undefined,
       totalCount: items.length,
     })
   } catch (error) {

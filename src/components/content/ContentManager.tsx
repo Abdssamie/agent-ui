@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useRef, useMemo } from 'react'
+import {useEffect, useState, useRef, useMemo, useCallback} from 'react'
 import { motion } from 'framer-motion'
 import { useContentStore } from '@/stores/contentStore'
 import { ContentGrid } from './ContentGrid'
@@ -10,7 +10,7 @@ import { StorageProviderSelect } from './StorageProviderSelect'
 import { ContentPreviewDialog } from './ContentPreviewDialog'
 import { Button } from '@/components/ui/button'
 import Icon from '@/components/ui/icon'
-import { ContentItem } from '@/types/content'
+import {ContentFilter, ContentItem} from '@/types/content'
 import { getContentUrlAPI } from '@/api/content'
 import { toast } from 'sonner'
 
@@ -76,6 +76,10 @@ export function ContentManager() {
       fetchPreviews()
     }
   }, [provider, updateItemUrl, items])
+
+    const onChangeAction = useCallback((filter: ContentFilter) => {
+       setFilter(filter);
+    }, [setFilter]);
 
   const handleUpload = async (files: File[]) => {
     for (const file of files) {
@@ -145,7 +149,7 @@ export function ContentManager() {
             </div>
           </div>
         </div>
-        <StorageProviderSelect value={provider} onChange={setProvider} />
+        <StorageProviderSelect value={provider} onChangeAction={setProvider} />
       </div>
 
       {error && (
@@ -174,7 +178,7 @@ export function ContentManager() {
         />
         <ContentFilters
           filter={filter}
-          onChange={setFilter}
+          onChangeAction={onChangeAction}
           loading={loading}
           uploadButton={
             <Button onClick={() => fileInputRef.current?.click()} variant="outline">
@@ -197,7 +201,7 @@ export function ContentManager() {
         </div>
       ) : (
         <div className="flex-1 space-y-4 overflow-y-auto rounded-xl border p-4">
-          <ContentGrid items={items} onPreview={handlePreview} />
+          <ContentGrid items={items} onPreviewAction={handlePreview} />
           <div className="flex items-center justify-center gap-2">
             <Button
               onClick={() => goToPage(currentPage - 1)}
@@ -225,9 +229,9 @@ export function ContentManager() {
       <ContentPreviewDialog
         item={previewItem}
         open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        onDelete={handleDelete}
-        onDownload={handleDownload}
+        onOpenChangeAction={setDialogOpen}
+        onDeleteAction={handleDelete}
+        onDownloadAction={handleDownload}
         loading={loadingPreview}
       />
 

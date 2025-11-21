@@ -14,24 +14,24 @@ import Icon from '@/components/ui/icon'
 interface ContentPreviewDialogProps {
   item: ContentItem | null
   open: boolean
-  onOpenChange: (open: boolean) => void
-  onDelete: (id: string) => void
-  onDownload: (item: ContentItem) => void
+  onOpenChangeAction: (open: boolean) => void
+  onDeleteAction: (id: string) => void
+  onDownloadAction: (item: ContentItem) => void
   loading: boolean
 }
 
 export function ContentPreviewDialog({
   item,
   open,
-  onOpenChange,
-  onDelete,
-  onDownload,
+  onOpenChangeAction,
+  onDeleteAction,
+  onDownloadAction,
   loading,
 }: ContentPreviewDialogProps) {
   if (!item) return null
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChangeAction}>
       <DialogContent className="scrollbar-thick max-h-[90vh] max-w-2xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl">{item.name}</DialogTitle>
@@ -99,7 +99,7 @@ export function ContentPreviewDialog({
           </div>
           <div className="flex gap-3 pb-4 pt-2">
             <Button
-              onClick={() => onDownload(item)}
+              onClick={() => onDownloadAction(item)}
               variant="outline"
               className="flex-1"
             >
@@ -108,8 +108,8 @@ export function ContentPreviewDialog({
             </Button>
             <Button
               onClick={() => {
-                onDelete(item.id)
-                onOpenChange(false)
+                onDeleteAction(item.id)
+                onOpenChangeAction(false)
               }}
               variant="destructive"
               className="flex-1"

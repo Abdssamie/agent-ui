@@ -12,15 +12,15 @@ import { Database, Cloud } from 'lucide-react'
 
 interface StorageProviderSelectProps {
   value: StorageProvider
-  onChange: (provider: StorageProvider) => void
+  onChangeAction: (provider: StorageProvider) => void
 }
 
 export function StorageProviderSelect({
   value,
-  onChange,
+  onChangeAction,
 }: StorageProviderSelectProps) {
   return (
-    <Select value={value} onValueChange={onChange}>
+    <Select value={value} onValueChange={onChangeAction}>
       <SelectTrigger className="w-48">
         <SelectValue />
       </SelectTrigger>

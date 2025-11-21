@@ -4,39 +4,38 @@ import { useEffect, useState } from 'react'
 import { ContentFilter, ContentType } from '@/types/content'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Button } from '@/components/ui/button'
 import Icon from '@/components/ui/icon'
 
 interface ContentFiltersProps {
   filter: ContentFilter
-  onChange: (filter: ContentFilter) => void
+  onChangeAction: (filter: ContentFilter) => void
   uploadButton: React.ReactNode
   loading: boolean
 }
 
-export function ContentFilters({ filter, onChange, uploadButton, loading }: ContentFiltersProps) {
+export function ContentFilters({ filter, onChangeAction, uploadButton, loading }: ContentFiltersProps) {
   const [searchValue, setSearchValue] = useState(filter.search || '')
 
   useEffect(() => {
     const timer = setTimeout(() => {
       if (searchValue !== filter.search) {
-        onChange({ ...filter, search: searchValue || undefined })
+        onChangeAction({ ...filter, search: searchValue || undefined })
       }
     }, 500)
 
     return () => clearTimeout(timer)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchValue])
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchValue, onChangeAction])
 
-  useEffect(() => {
-    setSearchValue(filter.search || '')
-  }, [filter.search])
+  const hasFilters = filter.type || filter.search || filter.source
 
   return (
     <div className="flex w-full items-center gap-2">
       {uploadButton}
       <Select
         value={filter.type || 'all'}
-        onValueChange={(value) => onChange({ ...filter, type: value === 'all' ? undefined : value as ContentType })}
+        onValueChange={(value) => onChangeAction({ ...filter, type: value === 'all' ? undefined : value as ContentType })}
       >
         <SelectTrigger className="w-[140px]">
           <SelectValue />
@@ -50,9 +49,23 @@ export function ContentFilters({ filter, onChange, uploadButton, loading }: Cont
           <SelectItem value="other">Other</SelectItem>
         </SelectContent>
       </Select>
+      <Select
+        value={filter.source || 'all'}
+        onValueChange={(value) => onChangeAction({ ...filter, source: value === 'all' ? undefined : value })}
+      >
+        <SelectTrigger className="w-[140px]">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">All Sources</SelectItem>
+          <SelectItem value="manual">Manual</SelectItem>
+          <SelectItem value="workflow">Workflow</SelectItem>
+          <SelectItem value="agent">Agent</SelectItem>
+        </SelectContent>
+      </Select>
       <div className="relative flex-1">
         <Input
-          placeholder="Search..."
+          placeholder="Search files or paths..."
           value={searchValue}
           onChange={(e) => setSearchValue(e.target.value)}
           className="pr-8"
@@ -63,6 +76,19 @@ export function ContentFilters({ filter, onChange, uploadButton, loading }: Cont
           </div>
         )}
       </div>
+      {hasFilters && (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            setSearchValue('')
+            onChangeAction({})
+          }}
+          title="Clear filters"
+        >
+          <Icon type="x" size="sm" />
+        </Button>
+      )}
     </div>
   )
 }

@@ -25,7 +25,12 @@ export class S3Strategy implements StorageStrategy {
       ...item,
       type: getContentType(this.getMimeType(item.id)),
       storageProvider: 's3' as const,
-      metadata: { mimeType: this.getMimeType(item.id) },
+      tags: this.extractTags(item.id),
+      source: this.extractSource(item.id),
+      metadata: { 
+        mimeType: this.getMimeType(item.id),
+        ...this.extractMetadata(item.id)
+      },
     }))
 
     const filtered = this.applyFilters(items, options?.filter)
@@ -39,13 +44,15 @@ export class S3Strategy implements StorageStrategy {
 
   async upload(
     file: File,
-    onProgress?: (progress: number) => void
+    onProgress?: (progress: number) => void,
+    metadata?: Record<string, any>
   ): Promise<ContentItem> {
     const validation = await this.validateFile(file)
     if (!validation.valid) throw new Error(validation.error)
 
     const formData = new FormData()
     formData.append('file', file)
+    if (metadata) formData.append('metadata', JSON.stringify(metadata))
 
     const response = await fetch('/api/content/upload', {
       method: 'POST',
@@ -107,6 +114,29 @@ export class S3Strategy implements StorageStrategy {
     return mimeTypes[ext || ''] || 'application/octet-stream'
   }
 
+  private extractTags(key: string): string[] {
+    const parts = key.split('/')
+    return parts.length > 1 ? [parts[0]] : []
+  }
+
+  private extractSource(key: string): string | undefined {
+    if (key.includes('workflow-')) return 'workflow'
+    if (key.includes('agent-')) return 'agent'
+    return 'manual'
+  }
+
+  private extractMetadata(key: string): Record<string, any> {
+    const metadata: Record<string, any> = {}
+    
+    const workflowMatch = key.match(/workflow-([^/]+)/)
+    if (workflowMatch) metadata.workflowId = workflowMatch[1]
+    
+    const agentMatch = key.match(/agent-([^/]+)/)
+    if (agentMatch) metadata.agentId = agentMatch[1]
+    
+    return metadata
+  }
+
   private applyFilters(items: ContentItem[], filter?: ContentFilter): ContentItem[] {
     let filtered = [...items]
 
@@ -116,7 +146,19 @@ export class S3Strategy implements StorageStrategy {
 
     if (filter?.search) {
       const search = filter.search.toLowerCase()
-      filtered = filtered.filter((item) => item.name.toLowerCase().includes(search))
+      filtered = filtered.filter((item) => 
+        item.id.toLowerCase().includes(search) || item.name.toLowerCase().includes(search)
+      )
+    }
+
+    if (filter?.tags && filter.tags.length > 0) {
+      filtered = filtered.filter((item) => 
+        item.tags?.some(tag => filter.tags?.includes(tag))
+      )
+    }
+
+    if (filter?.source) {
+      filtered = filtered.filter((item) => item.source === filter.source)
     }
 
     if (filter?.sortBy) {

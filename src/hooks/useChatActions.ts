@@ -1,11 +1,11 @@
-import { useCallback } from 'react'
-import { toast } from 'sonner'
+import {useCallback} from 'react'
+import {toast} from 'sonner'
 
-import { useStore } from '../store'
+import {useStore} from '@/store'
 
-import { AgentDetails, TeamDetails, type ChatMessage } from '@/types/os'
-import { getAgentsAPI, getStatusAPI, getTeamsAPI } from '@/api/os'
-import { useQueryState } from 'nuqs'
+import {AgentDetails, type ChatMessage, TeamDetails} from '@/types/os'
+import {getAgentsAPI, getStatusAPI, getTeamsAPI} from '@/api/os'
+import {useQueryState} from 'nuqs'
 
 const useChatActions = () => {
   const { chatInputRef } = useStore()
@@ -26,8 +26,7 @@ const useChatActions = () => {
 
   const getStatus = useCallback(async () => {
     try {
-      const status = await getStatusAPI(selectedEndpoint)
-      return status
+        return await getStatusAPI(selectedEndpoint)
     } catch {
       return 503
     }
@@ -35,8 +34,7 @@ const useChatActions = () => {
 
   const getAgents = useCallback(async () => {
     try {
-      const agents = await getAgentsAPI(selectedEndpoint)
-      return agents
+        return await getAgentsAPI(selectedEndpoint)
     } catch {
       toast.error('Error fetching agents')
       return []
@@ -45,8 +43,7 @@ const useChatActions = () => {
 
   const getTeams = useCallback(async () => {
     try {
-      const teams = await getTeamsAPI(selectedEndpoint)
-      return teams
+        return await getTeamsAPI(selectedEndpoint)
     } catch {
       toast.error('Error fetching teams')
       return []
