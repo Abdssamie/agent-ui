@@ -17,8 +17,9 @@ import {parseWorkflowExecution} from '@/lib/workflowParser'
 import {toast} from 'sonner'
 
 // Helper function to get the initial input mode
-const getInitialInputMode = (type: 'string' | 'object') => {
-    return type === 'string' ? 'simple' : 'json';
+const getInitialInputMode = (type?: string) => {
+    if (type === 'object') return 'json';
+    return 'simple';
 };
 
 // Helper function to get the initial JSON string
@@ -83,16 +84,37 @@ export const WorkflowExecutionDialog = ({
                                             isCancelling = false
                                         }: WorkflowExecutionDialogProps) => {
     const [message, setMessage] = useState('');
-
-    const initialInputMode = getInitialInputMode(workflow?.input_schema?.type);
-
-    const initialJsonInput = getInitialJsonInput(initialInputMode, workflow, generateTemplateFromSchema);
-
-    const [inputMode, setInputMode] = useState(initialInputMode)
-
-    const [jsonInput, setJsonInput] = useState(initialJsonInput)
+    const [manualInputMode, setManualInputMode] = useState<'simple' | 'json' | null>(null);
+    const [manualJsonInput, setManualJsonInput] = useState<string | null>(null);
     const [jsonError, setJsonError] = useState<string | null>(null)
     const logsEndRef = useRef<HTMLDivElement>(null)
+
+    // Derive input mode from workflow, reset when workflow changes
+    const derivedInputMode = useMemo(() => 
+        getInitialInputMode(workflow?.input_schema?.type),
+        [workflow?.id]
+    );
+
+    const inputMode = manualInputMode ?? derivedInputMode;
+
+    // Derive JSON input from workflow, reset when workflow changes
+    const derivedJsonInput = useMemo(() => 
+        getInitialJsonInput(derivedInputMode, workflow, generateTemplateFromSchema),
+        [workflow?.id, derivedInputMode]
+    );
+
+    const jsonInput = manualJsonInput ?? derivedJsonInput;
+
+    // Reset manual overrides when workflow changes
+    const workflowId = workflow?.id;
+    const prevWorkflowIdRef = useRef(workflowId);
+    if (prevWorkflowIdRef.current !== workflowId) {
+        prevWorkflowIdRef.current = workflowId;
+        setManualInputMode(null);
+        setManualJsonInput(null);
+        setMessage('');
+        setJsonError(null);
+    }
 
     // Determine input type from schema
     const inputType = useMemo(() => {
@@ -168,7 +190,7 @@ export const WorkflowExecutionDialog = ({
     }
 
     const handleJsonChange = (value: string) => {
-        setJsonInput(value)
+        setManualJsonInput(value)
         // Clear error when user starts typing
         if (jsonError) {
             setJsonError(null)
@@ -177,11 +199,11 @@ export const WorkflowExecutionDialog = ({
 
     const toggleInputMode = () => {
         const newMode = inputMode === 'simple' ? 'json' : 'simple'
-        setInputMode(newMode)
+        setManualInputMode(newMode)
 
         // Convert between modes
         if (newMode === 'json' && message.trim()) {
-            setJsonInput(JSON.stringify({message: message.trim(), images: []}, null, 2))
+            setManualJsonInput(JSON.stringify({message: message.trim(), images: []}, null, 2))
         } else if (newMode === 'simple' && jsonInput.trim()) {
             try {
                 const parsed = JSON.parse(jsonInput)

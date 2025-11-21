@@ -13,9 +13,13 @@ const client = new S3Client({
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
   const pageToken = searchParams.get('pageToken') || undefined
-  const limit = parseInt(searchParams.get('limit') || '50')
+  
+  const parsedLimit = parseInt(searchParams.get('limit') || '50')
+  const limit = Math.max(1, Math.min(isNaN(parsedLimit) ? 50 : parsedLimit, 1000))
 
-  console.log('[LIST API] Request:', { pageToken, limit })
+  if (process.env.DEBUG_LIST_API) {
+    console.log('[LIST API] Request:', { pageToken, limit })
+  }
 
   try {
     const command = new ListObjectsV2Command({
@@ -25,32 +29,19 @@ export async function GET(request: NextRequest) {
     })
 
     const response = await client.send(command)
-    console.log('[LIST API] S3 Response:', {
-      totalObjects: response.Contents?.length,
-      hasNextToken: !!response.NextContinuationToken
-    })
 
     const items = (response.Contents || [])
-      .filter((obj) => {
-        const isValid = obj.Key && !obj.Key.endsWith('/') && obj.Size && obj.Size > 0
-        if (!isValid && obj.Key) {
-          console.log('[LIST API] Filtered out:', obj.Key, { size: obj.Size, endsWithSlash: obj.Key.endsWith('/') })
-        }
-        return isValid
-      })
-      .map((obj) => {
-        const displayName = obj.Key!.replace(/\//g, '-')
-        console.log('[LIST API] Mapping:', obj.Key, '->', displayName)
-        return {
-          id: obj.Key!,
-          name: displayName,
-          size: obj.Size || 0,
-          uploadedAt: obj.LastModified?.toISOString() || new Date().toISOString(),
-          metadata: obj.Metadata || {},
-        }
-      })
+      .filter((obj) => obj.Key && !obj.Key.endsWith('/') && obj.Size && obj.Size > 0)
+      .map((obj) => ({
+        id: obj.Key!,
+        name: obj.Key!.replace(/\//g, '-'),
+        size: obj.Size || 0,
+        uploadedAt: obj.LastModified?.toISOString() || new Date().toISOString(),
+      }))
 
-    console.log('[LIST API] Final items:', items.length, 'nextToken:', items.length > 0 ? !!response.NextContinuationToken : 'none')
+    if (process.env.DEBUG_LIST_API) {
+      console.log('[LIST API] Returned:', items.length, 'items')
+    }
 
     return NextResponse.json({
       items,
