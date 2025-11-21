@@ -119,7 +119,7 @@ export class S3Strategy implements StorageStrategy {
     return parts.length > 1 ? parts.slice(0, -1) : []
   }
 
-  private extractSource(key: string): string | undefined {
+  private extractSource(key: string): string {
     if (key.includes('workflow-')) return 'workflow'
     if (key.includes('agent-')) return 'agent'
     return 'manual'
