@@ -26,11 +26,9 @@ export class S3Strategy implements StorageStrategy {
       type: getContentType(this.getMimeType(item.id)),
       storageProvider: 's3' as const,
       tags: this.extractTags(item.id),
-      source: item.metadata?.source || 'manual',
       metadata: { 
         mimeType: this.getMimeType(item.id),
         ...item.metadata,
-        ...this.extractMetadata(item.id)
       },
     }))
 
@@ -120,18 +118,6 @@ export class S3Strategy implements StorageStrategy {
     return parts.length > 1 ? parts.slice(0, -1) : []
   }
 
-  private extractMetadata(key: string): Record<string, any> {
-    const metadata: Record<string, any> = {}
-    
-    const workflowMatch = key.match(/workflow-([^/-]+)/)
-    if (workflowMatch) metadata.workflowId = workflowMatch[1]
-    
-    const agentMatch = key.match(/agent-([^/-]+)/)
-    if (agentMatch) metadata.agentId = agentMatch[1]
-    
-    return metadata
-  }
-
   private applyFilters(items: ContentItem[], filter?: ContentFilter): ContentItem[] {
     let filtered = [...items]
 
@@ -144,16 +130,6 @@ export class S3Strategy implements StorageStrategy {
       filtered = filtered.filter((item) => 
         item.id.toLowerCase().includes(search)
       )
-    }
-
-    if (filter?.tags && filter.tags.length > 0) {
-      filtered = filtered.filter((item) => 
-        item.tags?.some(tag => filter.tags?.includes(tag))
-      )
-    }
-
-    if (filter?.source) {
-      filtered = filtered.filter((item) => item.source === filter.source)
     }
 
     if (filter?.sortBy) {

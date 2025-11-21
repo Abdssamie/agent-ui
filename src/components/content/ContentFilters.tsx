@@ -28,7 +28,7 @@ export function ContentFilters({ filter, onChangeAction, uploadButton, loading }
       // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchValue, onChangeAction])
 
-  const hasFilters = filter.type || filter.search || filter.source
+  const hasFilters = filter.type || filter.search
 
   return (
     <div className="flex w-full items-center gap-2">
@@ -49,23 +49,9 @@ export function ContentFilters({ filter, onChangeAction, uploadButton, loading }
           <SelectItem value="other">Other</SelectItem>
         </SelectContent>
       </Select>
-      <Select
-        value={filter.source || 'all'}
-        onValueChange={(value) => onChangeAction({ ...filter, source: value === 'all' ? undefined : value })}
-      >
-        <SelectTrigger className="w-[140px]">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">All Sources</SelectItem>
-          <SelectItem value="manual">Manual</SelectItem>
-          <SelectItem value="workflow">Workflow</SelectItem>
-          <SelectItem value="agent">Agent</SelectItem>
-        </SelectContent>
-      </Select>
       <div className="relative flex-1">
         <Input
-          placeholder="Search files or paths..."
+          placeholder="Search by path or name..."
           value={searchValue}
           onChange={(e) => setSearchValue(e.target.value)}
           className="pr-8"
