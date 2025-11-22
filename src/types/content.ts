@@ -1,4 +1,4 @@
-export type StorageProvider = 's3' | 'google-drive'
+export type StorageProvider = 's3' | 'remotion'
 
 export type ContentType = 'pdf' | 'image' | 'video' | 'document' | 'other'
 

@@ -1,6 +1,6 @@
 import { StorageProvider, StorageStrategy } from '@/types/content'
 import { S3Strategy } from './s3-strategy'
-import { GoogleDriveStrategy } from './google-drive-strategy'
+import { RemotionStrategy } from './remotion-strategy'
 
 export class StorageFactory {
   private static strategies: Map<StorageProvider, StorageStrategy> = new Map()
@@ -11,8 +11,8 @@ export class StorageFactory {
         case 's3':
           this.strategies.set(provider, new S3Strategy())
           break
-        case 'google-drive':
-          this.strategies.set(provider, new GoogleDriveStrategy())
+        case 'remotion':
+          this.strategies.set(provider, new RemotionStrategy())
           break
         default:
           throw new Error(`Unknown storage provider: ${provider}`)

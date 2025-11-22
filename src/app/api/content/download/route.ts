@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { GetObjectCommand } from '@aws-sdk/client-s3'
 import { Readable } from 'stream'
 import { s3Client } from '@/lib/s3Client'
+import { remotionS3Client, REMOTION_BUCKET, isRemotionAvailable } from '@/lib/remotionS3Client'
 import { validateId } from '@/lib/auth'
 
 export const runtime = 'nodejs'
@@ -9,6 +10,7 @@ export const runtime = 'nodejs'
 export async function GET(request: NextRequest) {
   const id = request.nextUrl.searchParams.get('id')
   const name = request.nextUrl.searchParams.get('name')
+  const provider = request.nextUrl.searchParams.get('provider') || 's3'
 
   const validationError = validateId(id)
   if (validationError) return validationError
@@ -17,11 +19,19 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Missing name parameter' }, { status: 400 })
   }
 
+  if (provider === 'remotion' && !isRemotionAvailable) {
+    return NextResponse.json({ 
+      error: 'Remotion bucket not configured' 
+    }, { status: 503 })
+  }
+
   const sanitizedName = name.replace(/["\r\n]/g, '_')
+  const client = provider === 'remotion' ? remotionS3Client! : s3Client
+  const bucket = provider === 'remotion' ? REMOTION_BUCKET : process.env.R2_BUCKET!
 
   try {
-    const response = await s3Client.send(new GetObjectCommand({
-      Bucket: process.env.R2_BUCKET!,
+    const response = await client.send(new GetObjectCommand({
+      Bucket: bucket,
       Key: id!,
     }))
 

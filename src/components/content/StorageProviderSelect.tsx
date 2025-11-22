@@ -8,7 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Database, Cloud } from 'lucide-react'
+import { Database } from 'lucide-react'
 
 interface StorageProviderSelectProps {
   value: StorageProvider
@@ -28,13 +28,13 @@ export function StorageProviderSelect({
         <SelectItem value="s3">
           <div className="flex items-center gap-2">
             <Database className="h-4 w-4" />
-            <span>S3 / R2</span>
+            <span>R2 Bucket</span>
           </div>
         </SelectItem>
-        <SelectItem value="google-drive" disabled>
+        <SelectItem value="remotion">
           <div className="flex items-center gap-2">
-            <Cloud className="h-4 w-4" />
-            <span>Google Drive (Coming Soon)</span>
+            <Database className="h-4 w-4" />
+            <span>Remotion Videos</span>
           </div>
         </SelectItem>
       </SelectContent>
