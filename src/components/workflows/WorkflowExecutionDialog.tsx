@@ -92,7 +92,7 @@ export const WorkflowExecutionDialog = ({
     // Derive input mode from workflow, reset when workflow changes
     const derivedInputMode = useMemo(() => 
         getInitialInputMode(workflow?.input_schema?.type),
-        [workflow?.id]
+        [workflow?.input_schema?.type]
     );
 
     const inputMode = manualInputMode ?? derivedInputMode;
@@ -100,7 +100,7 @@ export const WorkflowExecutionDialog = ({
     // Derive JSON input from workflow, reset when workflow changes
     const derivedJsonInput = useMemo(() => 
         getInitialJsonInput(derivedInputMode, workflow, generateTemplateFromSchema),
-        [workflow?.id, derivedInputMode]
+        [derivedInputMode, workflow]
     );
 
     const jsonInput = manualJsonInput ?? derivedJsonInput;
