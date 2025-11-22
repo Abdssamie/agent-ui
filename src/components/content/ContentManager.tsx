@@ -39,6 +39,7 @@ export function ContentManager() {
   const [loadingPreview, setLoadingPreview] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const previewRequestIdRef = useRef(0)
+  const isFetchingRef = useRef(false)
 
   useEffect(() => {
     loadContent()
@@ -48,11 +49,15 @@ export function ContentManager() {
 
   useEffect(() => {
     const fetchPreviews = async () => {
+      if (isFetchingRef.current) return
+      
       const itemsNeedingUrls = items.filter(
         (item) => (item.type === 'image' || item.type === 'pdf' || item.type === 'video') && !item.url
       )
 
       if (itemsNeedingUrls.length === 0) return
+
+      isFetchingRef.current = true
 
       const promises = itemsNeedingUrls.map(async (item) => {
         try {
@@ -71,12 +76,14 @@ export function ContentManager() {
           updateItemUrl(result.value.id, result.value.url)
         }
       })
+
+      isFetchingRef.current = false
     }
 
     if (items.length > 0) {
       fetchPreviews()
     }
-  }, [provider, updateItemUrl, items])
+  }, [itemsKey, provider, updateItemUrl])
 
     const onChangeAction = useCallback((filter: ContentFilter) => {
        setFilter(filter);
