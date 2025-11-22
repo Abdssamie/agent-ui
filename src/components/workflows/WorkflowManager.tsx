@@ -4,7 +4,6 @@ import { motion } from 'framer-motion'
 import { WorkflowGrid } from './WorkflowGrid'
 import { FilterPanel, SearchBar, SortSelector, usePersistentState } from './Controls'
 import { WorkflowExecutionDialog } from './WorkflowExecutionDialog'
-import { ActiveRunsWarningDialog } from './ActiveRunsWarningDialog'
 import { getWorkflowsAPI, getWorkflowDetailsAPI, executeWorkflowAPI, cancelWorkflowRunAPI } from '@/api/workflows'
 import { parseWorkflowLogLine } from '@/lib/workflowParser'
 import { WorkflowSummary } from '@/types/workflow'
@@ -30,7 +29,6 @@ export const WorkflowManager = ({ baseUrl, dbId }: WorkflowManagerProps) => {
   const [executionLogs, setExecutionLogs] = useState<string[]>([])
   const [currentRunId, setCurrentRunId] = useState<string | null>(null)
   const [isCancelling, setIsCancelling] = useState(false)
-  const [showNavigationWarning, setShowNavigationWarning] = useState(false)
   const [executingWorkflowId, setExecutingWorkflowId] = useState<string | null>(null)
   const wasCancelledRef = useRef(false)
   const hasLoadedRef = useRef(false)
@@ -74,14 +72,10 @@ export const WorkflowManager = ({ baseUrl, dbId }: WorkflowManagerProps) => {
     }
   }
 
-  // Prevent closing dialog while workflow is running
+  // Allow closing dialog
   const handleDialogOpenChange = useCallback((open: boolean) => {
-    if (!open && isExecuting) {
-      setShowNavigationWarning(true)
-    } else {
-      setDialogOpen(open)
-    }
-  }, [isExecuting])
+    setDialogOpen(open)
+  }, [])
 
   const handleExecute = async (message: string) => {
     if (!selectedWorkflow?.id) return
@@ -318,16 +312,6 @@ export const WorkflowManager = ({ baseUrl, dbId }: WorkflowManagerProps) => {
         executionLogs={executionLogs}
         onCancel={handleCancel}
         isCancelling={isCancelling}
-      />
-
-      <ActiveRunsWarningDialog
-        open={showNavigationWarning}
-        onConfirm={() => {
-          setShowNavigationWarning(false)
-          setDialogOpen(false)
-        }}
-        onCancel={() => setShowNavigationWarning(false)}
-        activeRunCount={1}
       />
       </div>
   )

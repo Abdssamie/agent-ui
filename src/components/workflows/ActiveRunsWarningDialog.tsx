@@ -26,7 +26,7 @@ export const ActiveRunsWarningDialog = ({
             <AlertDialogTitle>Active Workflow Running</AlertDialogTitle>
           </div>
         </AlertDialogHeader>
-        <AlertDialogDescription className="space-y-3">
+        <div className="space-y-3 text-sm text-muted-foreground">
           <p>
             You have <span className="font-semibold">{activeRunCount} active workflow{activeRunCount !== 1 ? 's' : ''}</span> currently running.
           </p>
@@ -41,7 +41,7 @@ export const ActiveRunsWarningDialog = ({
           <p className="text-sm">
             The workflow will continue running on the server, but you won&apos;t be able to monitor or control it.
           </p>
-        </AlertDialogDescription>
+        </div>
         <div className="flex gap-3 pt-4">
           <AlertDialogCancel onClick={onCancel}>
             Stay Here
