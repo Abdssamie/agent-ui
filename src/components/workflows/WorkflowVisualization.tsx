@@ -210,13 +210,13 @@ export function WorkflowVisualization({
                       </h4>
                     </div>
                     {step.executor_name && (
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-xs text-muted">
                         {step.executor_type}: {step.executor_name}
                       </p>
                     )}
                   </div>
                   {step.duration !== undefined && (
-                    <span className="flex-shrink-0 text-xs text-muted-foreground">
+                    <span className="flex-shrink-0 text-xs text-muted">
                       {formatDuration(step.duration)}
                     </span>
                   )}
@@ -236,7 +236,7 @@ export function WorkflowVisualization({
                         <Copy className="h-3 w-3" />
                       )}
                     </button>
-                    <pre className="overflow-x-auto text-xs text-muted-foreground pr-8">
+                    <pre className="overflow-x-auto text-xs text-muted pr-8">
                       {typeof step.content === 'string'
                         ? step.content
                         : JSON.stringify(step.content, null, 2)}

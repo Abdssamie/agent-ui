@@ -1,487 +1,267 @@
 'use client'
-import { useState, useEffect } from 'react'
+
+import {useEffect, useState, useRef, useMemo, useCallback} from 'react'
 import { motion } from 'framer-motion'
-import { useContentManager } from '@/hooks/useContentManager'
-import { ContentItem, StorageProvider } from '@/types/content'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import Icon from '@/components/ui/icon'
+import { useContentStore } from '@/stores/contentStore'
+import { ContentGrid } from './ContentGrid'
+import { ContentFilters } from './ContentFilters'
+import { UploadQueue } from './UploadQueue'
 import { StorageProviderSelect } from './StorageProviderSelect'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle
-} from '@/components/ui/alert-dialog'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle
-} from '@/components/ui/dialog'
-import { ContentUploadZone } from './ContentUploadZone'
-import { Badge } from '@/components/ui/badge'
+import { ContentPreviewDialog } from './ContentPreviewDialog'
+import { Button } from '@/components/ui/button'
+import Icon from '@/components/ui/icon'
+import {ContentFilter, ContentItem} from '@/types/content'
+import { getContentUrlAPI } from '@/api/content'
+import { toast } from 'sonner'
 
-export const ContentManager = () => {
-  const [provider, setProvider] = useState<StorageProvider>('s3')
-  const { contents, isLoading, error, loadContents, uploadContent, deleteContent, batchDelete } =
-    useContentManager({ provider })
+export function ContentManager() {
+  const {
+    items,
+    loading,
+    error,
+    provider,
+    filter,
+    currentPage,
+    hasNextPage,
+    uploads,
+    setProvider,
+    setFilter,
+    loadContent,
+    goToPage,
+    uploadFile,
+    deleteItem,
+    clearError,
+    updateItemUrl,
+  } = useContentStore()
 
-  const [searchQuery, setSearchQuery] = useState('')
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [contentToDelete, setContentToDelete] = useState<string | null>(null)
-  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false)
-  const [selectedContent, setSelectedContent] = useState<ContentItem | null>(null)
-  const [uploadingFiles, setUploadingFiles] = useState<
-    Map<string, { name: string; progress: number; status: 'uploading' | 'success' | 'error' }>
-  >(new Map())
+  const [previewItem, setPreviewItem] = useState<ContentItem | null>(null)
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [loadingPreview, setLoadingPreview] = useState(false)
+  const [fetchingAll, setFetchingAll] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const previewRequestIdRef = useRef(0)
 
   useEffect(() => {
-    loadContents()
-  }, [loadContents])
+    loadContent()
+  }, [loadContent])
 
-  const filteredContents = contents.filter((content) =>
-    content.name.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+    const onChangeAction = useCallback((filter: ContentFilter) => {
+       setFilter(filter);
+    }, [setFilter]);
 
-  const handleSelectAll = () => {
-    if (selectedIds.size === filteredContents.length) {
-      setSelectedIds(new Set())
-    } else {
-      setSelectedIds(new Set(filteredContents.map((c) => c.id)))
+  const handleFetchAllPreviews = async () => {
+    const itemsNeedingUrls = items.filter(
+      (item) => (item.type === 'image' || item.type === 'pdf' || item.type === 'video') && !item.url
+    )
+
+    if (itemsNeedingUrls.length === 0) {
+      toast.info('All previews already loaded')
+      return
     }
-  }
 
-  const handleSelectOne = (id: string) => {
-    const newSelected = new Set(selectedIds)
-    if (newSelected.has(id)) {
-      newSelected.delete(id)
-    } else {
-      newSelected.add(id)
-    }
-    setSelectedIds(newSelected)
-  }
+    setFetchingAll(true)
+    try {
+      const promises = itemsNeedingUrls.map(async (item) => {
+        try {
+          const url = await getContentUrlAPI(item.id, provider)
+          return { id: item.id, url, success: true }
+        } catch (error) {
+          return { id: item.id, url: '', success: false }
+        }
+      })
 
-  const handleDeleteClick = (id: string) => {
-    setContentToDelete(id)
-    setDeleteDialogOpen(true)
-  }
-
-  const handleConfirmDelete = async () => {
-    if (contentToDelete) {
-      await deleteContent(contentToDelete)
-      setContentToDelete(null)
-      setDeleteDialogOpen(false)
-    }
-  }
-
-  const handleBatchDelete = async () => {
-    if (selectedIds.size > 0) {
-      await batchDelete(Array.from(selectedIds))
-      setSelectedIds(new Set())
-    }
-  }
-
-  const handleViewDetails = (content: ContentItem) => {
-    setSelectedContent(content)
-    setDetailsDialogOpen(true)
-  }
-
-  const handleFilesSelected = async (files: File[]) => {
-    for (const file of files) {
-      const uploadId = `${Date.now()}-${file.name}`
+      const results = await Promise.allSettled(promises)
       
-      setUploadingFiles((prev) =>
-        new Map(prev).set(uploadId, {
-          name: file.name,
-          progress: 0,
-          status: 'uploading'
-        })
-      )
+      results.forEach((result) => {
+        if (result.status === 'fulfilled' && result.value.success) {
+          updateItemUrl(result.value.id, result.value.url)
+        }
+      })
 
-      try {
-        await uploadContent(file, (progress) => {
-          setUploadingFiles((prev) => {
-            const updated = new Map(prev)
-            const current = updated.get(uploadId)
-            if (current) {
-              updated.set(uploadId, { ...current, progress })
-            }
-            return updated
-          })
-        })
-
-        setUploadingFiles((prev) => {
-          const updated = new Map(prev)
-          updated.set(uploadId, {
-            name: file.name,
-            progress: 100,
-            status: 'success'
-          })
-          return updated
-        })
-
-        setTimeout(() => {
-          setUploadingFiles((prev) => {
-            const updated = new Map(prev)
-            updated.delete(uploadId)
-            return updated
-          })
-        }, 2000)
-      } catch {
-        setUploadingFiles((prev) => {
-          const updated = new Map(prev)
-          updated.set(uploadId, {
-            name: file.name,
-            progress: 0,
-            status: 'error'
-          })
-          return updated
-        })
-
-        setTimeout(() => {
-          setUploadingFiles((prev) => {
-            const updated = new Map(prev)
-            updated.delete(uploadId)
-            return updated
-          })
-        }, 5000)
-      }
+      toast.success(`Loaded ${itemsNeedingUrls.length} previews`)
+    } catch (error) {
+      toast.error('Failed to load previews')
+    } finally {
+      setFetchingAll(false)
     }
   }
 
-  const formatSize = (bytes: number) => {
-    if (bytes < 1024) return `${bytes} B`
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  const handleUpload = async (files: File[]) => {
+    for (const file of files) {
+      await uploadFile(file)
+    }
   }
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString()
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    if (files.length > 0) {
+      handleUpload(files)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
   }
 
-  const getTypeIcon = (type: ContentItem['type']) => {
-    switch (type) {
-      case 'image':
-        return 'image'
-      case 'video':
-        return 'video'
-      case 'pdf':
-        return 'file'
-      default:
-        return 'file'
+  const handlePreview = async (item: ContentItem) => {
+    const requestId = ++previewRequestIdRef.current
+    setDialogOpen(true)
+    setPreviewItem(item)
+    
+    // If URL already exists, no need to fetch
+    if (item.url) {
+      setLoadingPreview(false)
+      return
+    }
+    
+    setLoadingPreview(true)
+    try {
+      const url = await getContentUrlAPI(item.id, provider)
+      if (previewRequestIdRef.current !== requestId) return
+      const updatedItem = { ...item, url }
+      setPreviewItem(updatedItem)
+      updateItemUrl(item.id, url)
+    } catch (error) {
+      console.error('Failed to get URL:', error)
+    } finally {
+      setLoadingPreview(false)
+    }
+  }
+
+  const handleDownload = (item: ContentItem) => {
+    const url = `/api/content/download?id=${encodeURIComponent(item.id)}&name=${encodeURIComponent(item.name)}&provider=${provider}`
+    const a = document.createElement('a')
+    a.href = url
+    a.download = item.name
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+  }
+
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteItem(id)
+      toast.success('File deleted successfully')
+    } catch (error) {
+      toast.error('Failed to delete file')
     }
   }
 
   return (
-    <div className="flex h-full flex-col bg-background">
-      {/* Header */}
-      <div className="flex items-center justify-between border-b border-primary/15 bg-accent/50 px-6 py-4">
-        <div className="flex items-center gap-3">
-          <div>
-            <h2 className="text-xs font-medium uppercase text-primary">Content Library</h2>
-            <p className="text-xs text-muted-foreground">
-              {contents.length} {contents.length === 1 ? 'item' : 'items'}
-            </p>
+    <div className="flex h-full flex-col gap-6 overflow-hidden p-6">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <h2 className="text-2xl font-semibold">Content Manager</h2>
+          <div className="group relative">
+            <Icon type="info" size="xs" className="text-muted-foreground" />
+            <div className="absolute left-0 top-6 z-50 hidden w-64 rounded-lg border bg-background p-2 text-xs shadow-md group-hover:block">
+              Search loads up to 1000 items. For larger buckets, use pagination without search.
+            </div>
           </div>
         </div>
-        <div className="flex gap-2">
-          <StorageProviderSelect
-            value={provider}
-            onValueChange={(v) => setProvider(v)}
-          />
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={loadContents}
-            disabled={isLoading}
-            className="gap-2 rounded-xl border border-primary/15 bg-accent text-xs font-medium uppercase text-muted hover:bg-accent/80"
-          >
-            <Icon type="refresh" size="xs" />
-            Refresh
-          </Button>
-          {selectedIds.size > 0 && (
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={handleBatchDelete}
-              className="rounded-xl text-xs font-medium uppercase"
-            >
-              Delete {selectedIds.size}
+        <StorageProviderSelect value={provider} onChangeAction={setProvider} />
+      </div>
+
+      {error && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="rounded-xl border border-destructive/50 bg-destructive/10 p-4"
+        >
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-destructive">{error}</p>
+            <Button variant="ghost" size="sm" onClick={clearError}>
+              <Icon type="x" size="sm" />
             </Button>
-          )}
-        </div>
-      </div>
-
-      <div className="flex-1 overflow-auto scrollbar-thick">
-        <div className="mx-auto max-w-6xl space-y-6 p-6">
-          {/* Coming Soon Banner */}
-          <div className="rounded-xl border border-primary/15 bg-primary/5 p-6">
-            <div className="flex items-start gap-4">
-              <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-primary/10">
-                <Icon type="info" size="md" className="text-primary" />
-              </div>
-              <div className="flex-1">
-                <div className="mb-2 flex items-center gap-2">
-                  <h3 className="text-xs font-medium uppercase text-primary">Coming Soon</h3>
-                  <Badge variant="outline" className="border-primary/20 bg-primary/10 text-xs text-primary">
-                    In Development
-                  </Badge>
-                </div>
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  This Content Library feature is currently under development. The UI below demonstrates the planned functionality for managing your company&apos;s PDFs, images, videos, and documents across Cloudflare R2 and Google Drive storage. Backend integration is in progress.
-                </p>
-              </div>
-            </div>
           </div>
+        </motion.div>
+      )}
 
-          {/* Upload Zone */}
-          <div className="rounded-xl border border-primary/15 bg-accent p-4">
-            <ContentUploadZone onFilesSelected={handleFilesSelected} disabled={isLoading} />
-          </div>
-
-          {/* Upload Progress */}
-          {uploadingFiles.size > 0 && (
-            <div className="space-y-2 rounded-xl border border-primary/15 bg-accent p-4">
-              {Array.from(uploadingFiles.entries()).map(([id, upload]) => (
-                <div key={id} className="flex items-center gap-3">
-                  <Icon
-                    type={
-                      upload.status === 'success'
-                        ? 'check-circle'
-                        : upload.status === 'error'
-                          ? 'x-circle'
-                          : 'loader'
-                    }
-                    size="xs"
-                    className={
-                      upload.status === 'uploading' ? 'animate-spin text-primary' : ''
-                    }
-                  />
-                  <div className="flex-1">
-                    <p className="text-xs font-medium text-primary">{upload.name}</p>
-                    {upload.status === 'uploading' && (
-                      <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-primary/10">
-                        <div
-                          className="h-full bg-primary transition-all"
-                          style={{ width: `${upload.progress}%` }}
-                        />
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {error && (
-            <div className="rounded-xl border border-destructive/20 bg-destructive/10 px-4 py-3 text-xs text-destructive">
-              {error}
-            </div>
-          )}
-
-          {/* Search */}
-          <div className="relative max-w-md">
-            <Icon
-              type="search"
-              size="xs"
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-            />
-            <Input
-              placeholder="Search content..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="rounded-xl border-primary/15 bg-accent pl-9 text-xs font-medium text-muted"
-            />
-          </div>
-
-          {/* Content Grid */}
-          {isLoading && contents.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16">
-              <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-              <p className="mt-4 text-xs text-muted-foreground">Loading content...</p>
-            </div>
-          ) : filteredContents.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
-                <Icon type="file" size="md" className="text-muted-foreground" />
-              </div>
-              <p className="text-xs font-medium">No content found</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {searchQuery ? 'Try a different search term' : 'Upload files to get started'}
-              </p>
-            </div>
+      <div className="flex w-full items-center gap-3">
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          accept="image/*,video/*,application/pdf,.doc,.docx,.xls,.xlsx,.txt,.csv"
+          onChange={handleFileSelect}
+          className="hidden"
+        />
+        <ContentFilters
+          filter={filter}
+          onChangeAction={onChangeAction}
+          loading={loading}
+          uploadButton={
+            <Button onClick={() => fileInputRef.current?.click()} variant="outline">
+              <Icon type="upload" size="sm" className="mr-2" />
+              Upload
+            </Button>
+          }
+        />
+        <Button
+          onClick={handleFetchAllPreviews}
+          disabled={fetchingAll || loading}
+          size="sm"
+          variant="outline"
+          className="rounded-xl"
+        >
+          {fetchingAll ? (
+            <>
+              <Icon type="loader" size="xs" className="animate-spin" />
+              <span className="text-xs">Loading...</span>
+            </>
           ) : (
-            <motion.div
-              className="grid gap-4 md:grid-cols-2 lg:grid-cols-3"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-            >
-              {filteredContents.map((content) => (
-                <div
-                  key={content.id}
-                  className="group cursor-pointer overflow-hidden rounded-xl border border-primary/15 bg-accent transition-all hover:border-primary/30"
-                  onClick={() => handleViewDetails(content)}
-                >
-                  {/* Thumbnail */}
-                  <div className="relative aspect-video bg-primary/5">
-                    {content.thumbnailUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={content.thumbnailUrl}
-                        alt={content.name}
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-full items-center justify-center">
-                        <Icon
-                          type={getTypeIcon(content.type)}
-                          size="md"
-                          className="text-muted"
-                        />
-                      </div>
-                    )}
-                    <div className="absolute right-2 top-2">
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.has(content.id)}
-                        onChange={(e) => {
-                          e.stopPropagation()
-                          handleSelectOne(content.id)
-                        }}
-                        onClick={(e) => e.stopPropagation()}
-                        className="cursor-pointer rounded"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Info */}
-                  <div className="p-3">
-                    <div className="mb-2 flex items-start justify-between gap-2">
-                      <p className="text-xs font-medium text-primary line-clamp-1">
-                        {content.name}
-                      </p>
-                      <Badge variant="secondary" className="text-xs">
-                        {content.type}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span>{formatSize(content.size)}</span>
-                      <span>{formatDate(content.uploadedAt)}</span>
-                    </div>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="border-t border-primary/15 p-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleDeleteClick(content.id)
-                      }}
-                      className="h-8 w-full gap-2 text-xs hover:bg-destructive/10 hover:text-destructive"
-                    >
-                      <Icon type="trash" size="xs" />
-                      Delete
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </motion.div>
+            <>
+              <Icon type="image" size="xs" />
+              <span className="text-xs">Load Previews</span>
+            </>
           )}
-        </div>
+        </Button>
       </div>
 
-      {/* Delete Dialog */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Content</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete this content? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleConfirmDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+      {loading && items.length === 0 ? (
+        <div className="flex flex-1 items-center justify-center">
+          <Icon type="loader" size="lg" className="animate-spin text-muted-foreground" />
+        </div>
+      ) : items.length === 0 ? (
+        <div className="flex flex-1 items-center justify-center">
+          <p className="text-muted-foreground">
+            No content found. Upload files to get started.
+          </p>
+        </div>
+      ) : (
+        <div className="flex-1 space-y-4 overflow-y-auto rounded-xl border p-4">
+          <ContentGrid items={items} onPreviewAction={handlePreview} />
+          <div className="flex items-center justify-center gap-2">
+            <Button
+              onClick={() => goToPage(currentPage - 1)}
+              disabled={currentPage === 1 || loading}
+              variant="outline"
+              size="sm"
             >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+              ←
+            </Button>
+            <span className="text-sm text-muted-foreground">
+              Page {currentPage}
+            </span>
+            <Button
+              onClick={() => goToPage(currentPage + 1)}
+              disabled={!hasNextPage || loading}
+              variant="outline"
+              size="sm"
+            >
+              →
+            </Button>
+          </div>
+        </div>
+      )}
 
-      {/* Details Dialog */}
-      <Dialog open={detailsDialogOpen} onOpenChange={setDetailsDialogOpen}>
-        <DialogContent className="max-w-xl">
-          <DialogHeader>
-            <DialogTitle className="text-xl">{selectedContent?.name}</DialogTitle>
-            <DialogDescription>Content details</DialogDescription>
-          </DialogHeader>
-          {selectedContent && (
-            <div className="space-y-6">
-              <div className="flex items-center justify-between rounded-xl border border-primary/15 bg-accent p-4">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
-                    <Icon type={getTypeIcon(selectedContent.type)} size="md" className="text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium uppercase text-primary">
-                      {selectedContent.type}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {formatSize(selectedContent.size)}
-                    </p>
-                  </div>
-                </div>
-                <Badge variant="secondary">{selectedContent.storageProvider}</Badge>
-              </div>
+      <ContentPreviewDialog
+        item={previewItem}
+        open={dialogOpen}
+        onOpenChangeAction={setDialogOpen}
+        onDeleteAction={handleDelete}
+        onDownloadAction={handleDownload}
+        loading={loadingPreview}
+      />
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <h3 className="mb-1 text-xs font-medium uppercase text-primary">Uploaded</h3>
-                  <p className="text-xs text-muted-foreground">
-                    {formatDate(selectedContent.uploadedAt)}
-                  </p>
-                </div>
-                {selectedContent.updatedAt && (
-                  <div>
-                    <h3 className="mb-1 text-xs font-medium uppercase text-primary">
-                      Last Updated
-                    </h3>
-                    <p className="text-xs text-muted-foreground">
-                      {formatDate(selectedContent.updatedAt)}
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex justify-end gap-2 pt-2">
-                <Button
-                  variant="destructive"
-                  onClick={() => {
-                    setDetailsDialogOpen(false)
-                    handleDeleteClick(selectedContent.id)
-                  }}
-                  className="gap-2 rounded-xl text-xs font-medium uppercase"
-                >
-                  <Icon type="trash" size="xs" />
-                  Delete
-                </Button>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      <UploadQueue uploads={uploads} />
     </div>
   )
 }
