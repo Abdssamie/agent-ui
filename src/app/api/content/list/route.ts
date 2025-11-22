@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
       .filter((obj) => obj.Key && !obj.Key.endsWith('/') && obj.Size && obj.Size > 0)
       .map((obj) => ({
         id: obj.Key!,
-        name: obj.Key!.split('/').pop() || obj.Key!,
+        name: obj.Key!.replace(/\//g, '-'),
         size: obj.Size || 0,
         uploadedAt: obj.LastModified?.toISOString() || new Date().toISOString(),
       }))
