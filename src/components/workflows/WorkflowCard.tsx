@@ -38,7 +38,7 @@ export const WorkflowCard = ({ workflow, onTriggerAction, isExecuting, variant =
           </div>
 
           {workflow.description && (
-            <p className="text-xs text-muted-foreground leading-relaxed">
+            <p className="text-xs text-muted leading-relaxed">
               {workflow.description}
             </p>
           )}

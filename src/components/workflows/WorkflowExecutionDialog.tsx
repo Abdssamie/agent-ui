@@ -297,7 +297,7 @@ export const WorkflowExecutionDialog = ({
                                     onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => handleJsonChange(e.target.value)}
                                     placeholder='{\n  "message": "Your message here",\n  "images": [\n    {\n      "image_path": "uploads/image.png",\n      "description": "Image description",\n      "ratio": "landscape"\n    }\n  ]\n}'
                                     disabled={isExecuting}
-                                    className={`min-h-[120px] font-mono text-xs rounded-xl border-primary/15 bg-accent text-primary placeholder:text-muted ${
+                                    className={`min-h-[120px] font-mono text-xs rounded-xl border-primary/15 bg-accent text-secondary placeholder:text-muted ${
                                         jsonError ? 'border-red-500' : ''
                                     }`}
                                 />
