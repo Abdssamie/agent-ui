@@ -37,6 +37,7 @@ export function ContentManager() {
   const [previewItem, setPreviewItem] = useState<ContentItem | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [loadingPreview, setLoadingPreview] = useState(false)
+  const [fetchingAll, setFetchingAll] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const previewRequestIdRef = useRef(0)
 
@@ -47,6 +48,43 @@ export function ContentManager() {
     const onChangeAction = useCallback((filter: ContentFilter) => {
        setFilter(filter);
     }, [setFilter]);
+
+  const handleFetchAllPreviews = async () => {
+    const itemsNeedingUrls = items.filter(
+      (item) => (item.type === 'image' || item.type === 'pdf' || item.type === 'video') && !item.url
+    )
+
+    if (itemsNeedingUrls.length === 0) {
+      toast.info('All previews already loaded')
+      return
+    }
+
+    setFetchingAll(true)
+    try {
+      const promises = itemsNeedingUrls.map(async (item) => {
+        try {
+          const url = await getContentUrlAPI(item.id, provider)
+          return { id: item.id, url, success: true }
+        } catch (error) {
+          return { id: item.id, url: '', success: false }
+        }
+      })
+
+      const results = await Promise.allSettled(promises)
+      
+      results.forEach((result) => {
+        if (result.status === 'fulfilled' && result.value.success) {
+          updateItemUrl(result.value.id, result.value.url)
+        }
+      })
+
+      toast.success(`Loaded ${itemsNeedingUrls.length} previews`)
+    } catch (error) {
+      toast.error('Failed to load previews')
+    } finally {
+      setFetchingAll(false)
+    }
+  }
 
   const handleUpload = async (files: File[]) => {
     for (const file of files) {
@@ -118,7 +156,28 @@ export function ContentManager() {
             </div>
           </div>
         </div>
-        <StorageProviderSelect value={provider} onChangeAction={setProvider} />
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={handleFetchAllPreviews}
+            disabled={fetchingAll || loading}
+            size="sm"
+            variant="outline"
+            className="rounded-xl"
+          >
+            {fetchingAll ? (
+              <>
+                <Icon type="loader" size="xs" className="animate-spin" />
+                <span className="text-xs">Loading...</span>
+              </>
+            ) : (
+              <>
+                <Icon type="eye" size="xs" />
+                <span className="text-xs">Load All Previews</span>
+              </>
+            )}
+          </Button>
+          <StorageProviderSelect value={provider} onChangeAction={setProvider} />
+        </div>
       </div>
 
       {error && (
