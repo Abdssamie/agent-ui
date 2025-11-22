@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
+import { authenticate } from '@/lib/auth'
 
 const client = new S3Client({
   region: 'auto',
@@ -11,6 +12,9 @@ const client = new S3Client({
 })
 
 export async function POST(request: NextRequest) {
+  const authError = authenticate(request)
+  if (authError) return authError
+
   try {
     const formData = await request.formData()
     const file = formData.get('file') as File

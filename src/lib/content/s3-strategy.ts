@@ -55,6 +55,9 @@ export class S3Strategy implements StorageStrategy {
 
     const response = await fetch('/api/content/upload', {
       method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.NEXT_PUBLIC_API_TOKEN}`,
+      },
       body: formData,
     })
 
@@ -73,6 +76,9 @@ export class S3Strategy implements StorageStrategy {
   async delete(id: string): Promise<void> {
     const response = await fetch(`/api/content/delete?id=${encodeURIComponent(id)}`, {
       method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${process.env.NEXT_PUBLIC_API_TOKEN}`,
+      },
     })
 
     if (!response.ok) throw new Error('Failed to delete file')

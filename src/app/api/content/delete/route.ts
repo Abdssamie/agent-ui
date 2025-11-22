@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { S3Client, DeleteObjectCommand } from '@aws-sdk/client-s3'
+import { authenticate, validateId } from '@/lib/auth'
 
 const R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID
 const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID
@@ -19,48 +20,21 @@ const client = new S3Client({
 })
 
 export async function DELETE(request: NextRequest) {
-  // Authentication
-  const authHeader = request.headers.get('authorization')
-  if (!authHeader?.startsWith('Bearer ')) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const authError = authenticate(request)
+  if (authError) return authError
 
-  const token = authHeader.substring(7)
-  if (token !== process.env.API_TOKEN) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
-  // Get and validate ID
-  const searchParams = request.nextUrl.searchParams
-  const id = searchParams.get('id')
-
-  if (!id) {
-    return NextResponse.json({ error: 'No ID provided' }, { status: 400 })
-  }
-
-  // Validate ID format and reject path traversal
-  if (id.includes('../') || id.includes('./') || id.includes('\0') || !/^[a-zA-Z0-9_\-\.]+$/.test(id)) {
-    return NextResponse.json({ error: 'Invalid ID format' }, { status: 400 })
-  }
-
-  // Authorization check (verify user owns resource)
-  // TODO: Implement ownership check against database
-  // For now, all authenticated users can delete
+  const id = request.nextUrl.searchParams.get('id')
+  const validationError = validateId(id)
+  if (validationError) return validationError
 
   try {
-    const command = new DeleteObjectCommand({
+    await client.send(new DeleteObjectCommand({
       Bucket: process.env.R2_BUCKET!,
-      Key: id,
-    })
-
-    await client.send(command)
-
+      Key: id!,
+    }))
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Delete error:', error)
-    return NextResponse.json(
-      { error: 'Failed to delete file' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Delete failed' }, { status: 500 })
   }
 }
