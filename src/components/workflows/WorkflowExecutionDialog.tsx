@@ -62,6 +62,45 @@ const generateTemplateFromSchema = (schema: Record<string, any>): Record<string,
     return template
 }
 
+const validateInput = (input: any, schema: Record<string, any>): { valid: boolean; errors: string[] } => {
+    const errors: string[] = []
+
+    if (!schema.properties) {
+        return { valid: true, errors: [] }
+    }
+
+    const required = schema.required || []
+
+    for (const field of required) {
+        if (input[field] === undefined || input[field] === null || input[field] === '') {
+            errors.push(`${field} is required`)
+        }
+    }
+
+    for (const [key, value] of Object.entries(schema.properties)) {
+        const prop = value as any
+        const inputValue = input[key]
+
+        if (inputValue === undefined || inputValue === null) continue
+
+        if (prop.type === 'string' && typeof inputValue !== 'string') {
+            errors.push(`${key} must be a string`)
+        } else if (prop.type === 'number' && typeof inputValue !== 'number') {
+            errors.push(`${key} must be a number`)
+        } else if (prop.type === 'integer' && (!Number.isInteger(inputValue))) {
+            errors.push(`${key} must be an integer`)
+        } else if (prop.type === 'boolean' && typeof inputValue !== 'boolean') {
+            errors.push(`${key} must be a boolean`)
+        } else if (prop.type === 'array' && !Array.isArray(inputValue)) {
+            errors.push(`${key} must be an array`)
+        } else if (prop.type === 'object' && typeof inputValue !== 'object') {
+            errors.push(`${key} must be an object`)
+        }
+    }
+
+    return { valid: errors.length === 0, errors }
+}
+
 interface WorkflowExecutionDialogProps {
     open: boolean
     onOpenChangeAction: (open: boolean) => void
@@ -176,6 +215,17 @@ export const WorkflowExecutionDialog = ({
             // JSON mode
             try {
                 const parsed = JSON.parse(jsonInput)
+                
+                // Validate against schema if available
+                if (workflow?.input_schema) {
+                    const validation = validateInput(parsed, workflow.input_schema)
+                    if (!validation.valid) {
+                        setJsonError(validation.errors.join(', '))
+                        toast.error(`Validation failed: ${validation.errors[0]}`)
+                        return
+                    }
+                }
+                
                 setJsonError(null)
                 onExecuteAction(JSON.stringify(parsed))
             } catch (error) {
