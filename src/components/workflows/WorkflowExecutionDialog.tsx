@@ -108,13 +108,16 @@ export const WorkflowExecutionDialog = ({
     // Reset manual overrides when workflow changes
     const workflowId = workflow?.id;
     const prevWorkflowIdRef = useRef(workflowId);
-    if (prevWorkflowIdRef.current !== workflowId) {
-        prevWorkflowIdRef.current = workflowId;
-        setManualInputMode(null);
-        setManualJsonInput(null);
-        setMessage('');
-        setJsonError(null);
-    }
+
+    useEffect(() => {
+        if (prevWorkflowIdRef.current !== workflowId) {
+            prevWorkflowIdRef.current = workflowId;
+            setManualInputMode(null);
+            setManualJsonInput(null);
+            setMessage('');
+            setJsonError(null);
+        }
+    }, [workflowId]);
 
     // Determine input type from schema
     const inputType = useMemo(() => {
