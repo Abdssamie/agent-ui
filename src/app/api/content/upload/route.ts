@@ -1,15 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
+import { PutObjectCommand } from '@aws-sdk/client-s3'
 import { authenticate } from '@/lib/auth'
-
-const client = new S3Client({
-  region: 'auto',
-  endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
-  credentials: {
-    accessKeyId: process.env.R2_ACCESS_KEY_ID!,
-    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
-  },
-})
+import { s3Client } from '@/lib/s3Client'
 
 export async function POST(request: NextRequest) {
   const authError = authenticate(request)
@@ -26,14 +18,12 @@ export async function POST(request: NextRequest) {
     const key = `${Date.now()}-${file.name}`
     const buffer = await file.arrayBuffer()
 
-    const command = new PutObjectCommand({
+    await s3Client.send(new PutObjectCommand({
       Bucket: process.env.R2_BUCKET!,
       Key: key,
       Body: new Uint8Array(buffer),
       ContentType: file.type,
-    })
-
-    await client.send(command)
+    }))
 
     return NextResponse.json({
       id: key,
@@ -44,9 +34,6 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error('Upload error:', error)
-    return NextResponse.json(
-      { error: 'Failed to upload file' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Failed to upload file' }, { status: 500 })
   }
 }
