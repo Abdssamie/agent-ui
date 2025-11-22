@@ -20,7 +20,7 @@ export function validateId(id: string | null): NextResponse | null {
     return NextResponse.json({ error: 'ID required' }, { status: 400 })
   }
 
-  if (id.includes('../') || id.includes('./') || id.includes('\0') || !/^[a-zA-Z0-9_\-\.]+$/.test(id)) {
+  if (id.includes('../') || id.includes('./') || id.includes('\0')) {
     return NextResponse.json({ error: 'Invalid ID' }, { status: 400 })
   }
 
