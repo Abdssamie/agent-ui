@@ -38,6 +38,7 @@ export function ContentManager() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [loadingPreview, setLoadingPreview] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const previewRequestIdRef = useRef(0)
 
   useEffect(() => {
     loadContent()
@@ -96,6 +97,7 @@ export function ContentManager() {
   }
 
   const handlePreview = async (item: ContentItem) => {
+    const requestId = ++previewRequestIdRef.current
     setDialogOpen(true)
     setPreviewItem(item)
     
@@ -108,6 +110,7 @@ export function ContentManager() {
     setLoadingPreview(true)
     try {
       const url = await getContentUrlAPI(item.id, provider)
+      if (previewRequestIdRef.current !== requestId) return
       const updatedItem = { ...item, url }
       setPreviewItem(updatedItem)
       updateItemUrl(item.id, url)
