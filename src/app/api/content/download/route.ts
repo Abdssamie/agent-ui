@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { GetObjectCommand } from '@aws-sdk/client-s3'
 import { Readable } from 'stream'
 import { s3Client } from '@/lib/s3Client'
+import { validateId } from '@/lib/auth'
 
 export const runtime = 'nodejs'
 
@@ -9,8 +10,11 @@ export async function GET(request: NextRequest) {
   const id = request.nextUrl.searchParams.get('id')
   const name = request.nextUrl.searchParams.get('name')
 
-  if (!id || !name) {
-    return NextResponse.json({ error: 'Missing parameters' }, { status: 400 })
+  const validationError = validateId(id)
+  if (validationError) return validationError
+
+  if (!name) {
+    return NextResponse.json({ error: 'Missing name parameter' }, { status: 400 })
   }
 
   const sanitizedName = name.replace(/["\r\n]/g, '_')
@@ -18,7 +22,7 @@ export async function GET(request: NextRequest) {
   try {
     const response = await s3Client.send(new GetObjectCommand({
       Bucket: process.env.R2_BUCKET!,
-      Key: id,
+      Key: id!,
     }))
 
     if (!response.Body) {
