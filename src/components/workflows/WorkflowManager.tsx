@@ -31,10 +31,9 @@ export const WorkflowManager = ({ baseUrl, dbId }: WorkflowManagerProps) => {
   const [currentRunId, setCurrentRunId] = useState<string | null>(null)
   const [isCancelling, setIsCancelling] = useState(false)
   const [showNavigationWarning, setShowNavigationWarning] = useState(false)
+  const [executingWorkflowId, setExecutingWorkflowId] = useState<string | null>(null)
   const wasCancelledRef = useRef(false)
   const hasLoadedRef = useRef(false)
-
-  const executingWorkflowId = selectedWorkflow?.id || null
 
   const loadWorkflows = useCallback(async () => {
     setIsLoading(true)
@@ -88,6 +87,7 @@ export const WorkflowManager = ({ baseUrl, dbId }: WorkflowManagerProps) => {
     if (!selectedWorkflow?.id) return
 
     setIsExecuting(true)
+    setExecutingWorkflowId(selectedWorkflow.id)
     setCurrentRunId(null)
     wasCancelledRef.current = false
     setExecutionLogs([`Starting workflow: ${selectedWorkflow.name}`])
@@ -128,6 +128,7 @@ export const WorkflowManager = ({ baseUrl, dbId }: WorkflowManagerProps) => {
               case 'WorkflowCancelled':
               case 'WorkflowError':
                 setIsExecuting(false)
+                setExecutingWorkflowId(null)
                 break
             }
           }
@@ -148,6 +149,7 @@ export const WorkflowManager = ({ baseUrl, dbId }: WorkflowManagerProps) => {
       }
     } finally {
       setIsExecuting(false)
+      setExecutingWorkflowId(null)
       setCurrentRunId(null)
     }
   }
