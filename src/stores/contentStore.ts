@@ -57,55 +57,28 @@ export const useContentStore = create<ContentState>((set, get) => ({
     try {
       const { provider, filter } = get()
       
-      // If searching or filtering by type, load all items
-      if (filter.search || filter.type) {
-        let allItems: ContentItem[] = []
-        let continuationToken: string | undefined = undefined
-        
-        // Fetch all items (max 1000)
-        while (allItems.length < 1000) {
-          const response = await listContentAPI(provider, { 
-            limit: 100,
-            pageToken: continuationToken
-          })
-          
-          allItems.push(...response.items)
-          
-          if (!response.nextPageToken) break
-          continuationToken = response.nextPageToken
-        }
-        
-        // Apply filters
-        let filtered = allItems
-        
-        if (filter.type) {
-          filtered = filtered.filter(item => item.type === filter.type)
-        }
-        
-        if (filter.search) {
-          const search = filter.search.toLowerCase()
-          filtered = filtered.filter(item => item.name.toLowerCase().includes(search))
-        }
-        
-        set({
-          items: filtered,
-          hasNextPage: false,
-          pageTokens: [''],
-          currentPage: 1,
-          loading: false,
-        })
-      } else {
-        // Normal pagination
-        const response = await listContentAPI(provider, { limit: 50 })
-        
-        set({
-          items: response.items,
-          hasNextPage: !!response.nextPageToken,
-          pageTokens: ['', response.nextPageToken || ''],
-          currentPage: 1,
-          loading: false,
-        })
+      // Always use pagination
+      const response = await listContentAPI(provider, { limit: 50 })
+      
+      // Apply filters client-side on the current page
+      let filtered = response.items
+      
+      if (filter.type) {
+        filtered = filtered.filter(item => item.type === filter.type)
       }
+      
+      if (filter.search) {
+        const search = filter.search.toLowerCase()
+        filtered = filtered.filter(item => item.name.toLowerCase().includes(search))
+      }
+      
+      set({
+        items: filtered,
+        hasNextPage: !!response.nextPageToken,
+        pageTokens: ['', response.nextPageToken || ''],
+        currentPage: 1,
+        loading: false,
+      })
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : 'Failed to load content',
@@ -115,7 +88,7 @@ export const useContentStore = create<ContentState>((set, get) => ({
   },
 
   goToPage: async (page) => {
-    const { provider, pageTokens, currentPage } = get()
+    const { provider, pageTokens, currentPage, filter } = get()
     if (page === currentPage) return
 
     set({ loading: true })
@@ -131,8 +104,20 @@ export const useContentStore = create<ContentState>((set, get) => ({
         newPageTokens[page] = response.nextPageToken
       }
 
+      // Apply filters client-side
+      let filtered = response.items
+      
+      if (filter.type) {
+        filtered = filtered.filter(item => item.type === filter.type)
+      }
+      
+      if (filter.search) {
+        const search = filter.search.toLowerCase()
+        filtered = filtered.filter(item => item.name.toLowerCase().includes(search))
+      }
+
       set({
-        items: response.items,
+        items: filtered,
         hasNextPage: !!response.nextPageToken,
         pageTokens: newPageTokens,
         currentPage: page,
