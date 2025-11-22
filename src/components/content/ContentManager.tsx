@@ -156,28 +156,7 @@ export function ContentManager() {
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button
-            onClick={handleFetchAllPreviews}
-            disabled={fetchingAll || loading}
-            size="sm"
-            variant="outline"
-            className="rounded-xl"
-          >
-            {fetchingAll ? (
-              <>
-                <Icon type="loader" size="xs" className="animate-spin" />
-                <span className="text-xs">Loading...</span>
-              </>
-            ) : (
-              <>
-                <Icon type="eye" size="xs" />
-                <span className="text-xs">Load All Previews</span>
-              </>
-            )}
-          </Button>
-          <StorageProviderSelect value={provider} onChangeAction={setProvider} />
-        </div>
+        <StorageProviderSelect value={provider} onChangeAction={setProvider} />
       </div>
 
       {error && (
@@ -215,6 +194,25 @@ export function ContentManager() {
             </Button>
           }
         />
+        <Button
+          onClick={handleFetchAllPreviews}
+          disabled={fetchingAll || loading}
+          size="sm"
+          variant="outline"
+          className="rounded-xl"
+        >
+          {fetchingAll ? (
+            <>
+              <Icon type="loader" size="xs" className="animate-spin" />
+              <span className="text-xs">Loading...</span>
+            </>
+          ) : (
+            <>
+              <Icon type="image" size="xs" />
+              <span className="text-xs">Load Previews</span>
+            </>
+          )}
+        </Button>
       </div>
 
       {loading && items.length === 0 ? (
